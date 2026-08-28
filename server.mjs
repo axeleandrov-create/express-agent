@@ -130,8 +130,9 @@ function forClient(data) {
   };
 }
 
-let cache = { at: 0, data: null };
-let inflight = null;
+let cache = { at: 0, data: null, tier: null };
+let inflightFast = null;
+let inflightFull = null;
 const CACHE_MS = 3 * 60 * 1000;
 
 function emptyBoard(note = "Прогрев ленты…") {
@@ -168,13 +169,14 @@ function wrapCached(data) {
   };
 }
 
-async function rebuildBoard(force) {
-  const data = await loadBoard(force);
+async function rebuildBoard(force, tier = "full") {
+  const data = await loadBoard(force, { tier });
   const payload = {
     ...data,
     fetchedAt: new Date().toISOString(),
     fromCache: false,
     warming: false,
+    enrichTier: data.enrichTier || tier,
   };
   if (
     data.ok &&
@@ -182,39 +184,61 @@ async function rebuildBoard(force) {
       (data.singlesCount || 0) > 0 ||
       (data.matchCount || 0) > 0)
   ) {
-    cache = { at: Date.now(), data: payload };
+    if (tier === "full" || !cache.data || cache.tier !== "full") {
+      cache = { at: Date.now(), data: payload, tier: payload.enrichTier || tier };
+    }
   }
   return payload;
 }
 
-function kickRebuild(force = false) {
-  if (!inflight) {
-    inflight = rebuildBoard(force).finally(() => {
-      inflight = null;
+function kickRebuild(force = false, tier = "full") {
+  const slot = tier === "fast" ? inflightFast : inflightFull;
+  if (!slot) {
+    const p = rebuildBoard(force, tier).finally(() => {
+      if (tier === "fast") inflightFast = null;
+      else inflightFull = null;
     });
+    if (tier === "fast") inflightFast = p;
+    else inflightFull = p;
+    return p;
   }
-  return inflight;
+  return slot;
+}
+
+function scheduleFullRebuild(force = false) {
+  if (cache.tier === "full" && !force) return;
+  kickRebuild(force, "full");
 }
 
 async function getBoard(force = false) {
   if (!force && cache.data && Date.now() - cache.at < CACHE_MS) {
+    if (IS_CLOUD && cache.tier !== "full") scheduleFullRebuild(false);
     return wrapCached(cache.data);
   }
 
   if (force) {
-    return kickRebuild(true);
+    return kickRebuild(true, IS_CLOUD ? "fast" : "full").then((fast) => {
+      if (IS_CLOUD) scheduleFullRebuild(true);
+      return fast;
+    });
   }
 
-  // В облаке первый запрос ждём сборку ленты (иначе пустой экран).
+  // В облаке сначала быстрая лента (~1 мин), полная догружается в фоне.
   if (IS_CLOUD && !cache.data) {
     try {
-      return await kickRebuild(false);
+      const fast = await kickRebuild(false, "fast");
+      scheduleFullRebuild(false);
+      return fast;
     } catch {
       return emptyBoard("Прогрев ленты… подожди до 2 минут, страница обновится сама.");
     }
   }
 
-  kickRebuild(false);
+  if (IS_CLOUD && cache.tier !== "full") {
+    scheduleFullRebuild(false);
+  } else {
+    kickRebuild(false, "full");
+  }
 
   if (cache.data) {
     return wrapCached(cache.data);
@@ -253,7 +277,11 @@ const server = http.createServer(async (req, res) => {
         features: { expressTake: true, expressReplace: true, expressSettle: true },
         matches: cache.data?.matchCount ?? 0,
         top: cache.data?.topCount ?? 0,
-        warming: Boolean(inflight && !cache.data),
+        warming: Boolean(
+          (inflightFast && !cache.data) ||
+            (inflightFull && cache.tier !== "full"),
+        ),
+        enrichTier: cache.tier || (inflightFast ? "fast" : null),
       }),
       "application/json; charset=utf-8",
     );
@@ -417,10 +445,21 @@ server.listen(PORT, "0.0.0.0", () => {
 });
 
 // Прогрев в фоне (не блокирует первый запрос UI)
-kickRebuild(true)
-  .then((d) =>
-    console.log(
-      `прогрев: матчей ${d.matchCount}, модель ${d.modeledCount ?? 0}, ТОП ${d.topCount ?? 0}, A ${d.singlesCount ?? 0}, история ${d.historyMatches ?? 0}`,
-    ),
-  )
-  .catch((e) => console.warn("прогрев:", e.message));
+if (IS_CLOUD) {
+  kickRebuild(true, "fast")
+    .then(() => scheduleFullRebuild(true))
+    .then(() =>
+      console.log(
+        `прогрев full: матчей ${cache.data?.matchCount ?? 0}, A ${cache.data?.singlesCount ?? 0}`,
+      ),
+    )
+    .catch((e) => console.warn("прогрев:", e.message));
+} else {
+  kickRebuild(true, "full")
+    .then((d) =>
+      console.log(
+        `прогрев: матчей ${d.matchCount}, модель ${d.modeledCount ?? 0}, ТОП ${d.topCount ?? 0}, A ${d.singlesCount ?? 0}, история ${d.historyMatches ?? 0}`,
+      ),
+    )
+    .catch((e) => console.warn("прогрев:", e.message));
+}

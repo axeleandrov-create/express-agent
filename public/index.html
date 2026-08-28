@@ -2705,6 +2705,9 @@
         sportTab = "football";
         await render();
         enrichBoardAfterLoad();
+        if (board.enrichTier === "fast") {
+          setTimeout(() => load(false), 45000);
+        }
         scheduleWarmPoll();
       } catch (e) {
         const retryable =
