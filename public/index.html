@@ -1074,6 +1074,39 @@
       render();
     }
 
+    const expressFillLevels = new Set();
+
+    async function ensureMissingCapperExpresses(levels = ["safe"]) {
+      if (board.warming || !(board.singlesCount > 0)) return false;
+      const missing = levels.filter((lv) => !board.capperExpresses?.[lv]?.matches?.length);
+      if (!missing.length) return false;
+
+      let changed = false;
+      for (const level of missing) {
+        if (expressFillLevels.has(level)) continue;
+        expressFillLevels.add(level);
+        try {
+          const res = await fetch("/api/express/take", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ level, excludeKeys: [] }),
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (data.coupon?.matches?.length) {
+            if (!board.capperExpresses) board.capperExpresses = {};
+            board.capperExpresses[level] = data.coupon;
+            changed = true;
+          }
+        } catch (e) {
+          console.warn("fill express:", level, e);
+        } finally {
+          expressFillLevels.delete(level);
+        }
+      }
+      return changed;
+    }
+
     async function takeExpress(level) {
       const coupon = board.capperExpresses?.[level];
       if (!coupon?.matches?.length || isExpressTaken(level)) return;
@@ -1709,8 +1742,9 @@
 
     function renderExpressCard(ex, level) {
       if (!ex?.matches?.length) {
+        const loading = level && expressFillLevels.has(level);
         return `<div class="ex-row"><div class="block ex-panel"><div class="sec">${escapeHtml(ex?.title || "Купон")}</div>
-          <div class="hint">Не набралось ног из группы A — смотри вкладку «Одинары A».</div></div></div>`;
+          <div class="hint">${loading ? "Собираем купон…" : "Не набралось ног из группы A — подожди обновление ленты."}</div></div></div>`;
       }
       const isOpen = expressOpenLevels.has(level);
       const taken = isExpressTaken(level);
@@ -2528,6 +2562,10 @@
         sportTab = "football";
         await settleExpressHistory();
         await render();
+        if (!board.capperExpresses?.safe?.matches?.length) {
+          const filled = await ensureMissingCapperExpresses(["safe"]);
+          if (filled) await render({ skipSettle: true });
+        }
         scheduleWarmPoll();
       } catch (e) {
         if (
@@ -2571,6 +2609,10 @@
           const cap = board.capperExpresses || {};
           const hasAny = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
           if (!hasAny && !board.warming) load(true);
+          else if (!cap.safe?.matches?.length && !board.warming) {
+            const filled = await ensureMissingCapperExpresses(["safe"]);
+            if (filled) await render({ skipSettle: true });
+          }
         }
         await render();
         if (!board.error && !isBoardWarming(board)) showBanner("");
