@@ -2592,13 +2592,13 @@
       fetch("/api/matches", { cache: "no-store" }).catch(() => {});
     }
 
-    async function waitForHealthReady(signal) {
+    async function waitForHealthReady() {
       const started = Date.now();
       const maxMs = 180000;
       kickServerWarmup();
       while (Date.now() - started < maxMs) {
         try {
-          const res = await fetch("/api/health", { cache: "no-store", signal });
+          const res = await fetch("/api/health", { cache: "no-store" });
           if (res.ok) {
             let h;
             try {
@@ -2620,8 +2620,8 @@
           } else if (isWakeStatus(res.status)) {
             updateWarmProgress("Облачный сервер просыпается… не закрывай вкладку.");
           }
-        } catch (e) {
-          if (e?.name === "AbortError") throw e;
+        } catch {
+          /* сеть / сон Render — пробуем снова */
         }
         await new Promise((r) => setTimeout(r, 3000));
       }
@@ -2643,23 +2643,47 @@
       return data;
     }
 
-    async function fetchBoardUntilReady(url, signal) {
-      await waitForHealthReady(signal);
-      let data = await fetchBoardQuick(url, signal);
-      if (!isBoardWarming(data)) return data;
-
-      const started = Date.now();
-      while (Date.now() - started < 45000) {
-        updateWarmProgress(data.note || "Догружаю матчи на экран…");
-        await new Promise((r) => setTimeout(r, 2500));
+    async function fetchBoardWithRetry(url, signal, tries = 4) {
+      let lastErr;
+      for (let i = 0; i < tries; i++) {
         try {
-          data = await fetchBoardQuick(url, signal);
-          if (!isBoardWarming(data)) return data;
-        } catch {
-          /* retry */
+          if (i > 0) {
+            updateWarmProgress(`Повтор загрузки матчей (${i + 1}/${tries})…`);
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+          return await fetchBoardQuick(url, signal);
+        } catch (e) {
+          lastErr = e;
+          if (e?.name === "AbortError") throw e;
         }
       }
-      return data;
+      throw lastErr || new Error("HTTP 502");
+    }
+
+    async function fetchBoardUntilReady(url) {
+      await waitForHealthReady();
+      updateWarmProgress("Загружаю матчи на экран…");
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 120000);
+      try {
+        let data = await fetchBoardWithRetry(url, ctrl.signal);
+        if (!isBoardWarming(data)) return data;
+
+        const started = Date.now();
+        while (Date.now() - started < 45000) {
+          updateWarmProgress(data.note || "Догружаю матчи на экран…");
+          await new Promise((r) => setTimeout(r, 2500));
+          try {
+            data = await fetchBoardWithRetry(url, ctrl.signal, 2);
+            if (!isBoardWarming(data)) return data;
+          } catch {
+            /* retry */
+          }
+        }
+        return data;
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     async function enrichBoardAfterLoad() {
@@ -2698,22 +2722,30 @@
           ? warmHintHtml()
           : `<div class="hint">Загрузка…</div>`;
       try {
-        const ctrl = new AbortController();
-        const timeoutMs = force || firstLoad || warmingUi ? 180000 : 30000;
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         const url = force ? "/api/matches?refresh=1" : "/api/matches";
         if (firstLoad || warmingUi) {
-          board = await fetchBoardUntilReady(url, ctrl.signal);
+          board = await fetchBoardUntilReady(url);
         } else {
-          const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          board = await res.json();
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 30000);
+          try {
+            const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            board = await res.json();
+          } finally {
+            clearTimeout(timer);
+          }
         }
-        clearTimeout(timer);
         firstLoad = false;
         stopWarmHealthPoll();
 
-        const fb = (board.singlesBySport?.football || []).length;
+        const cap = board.capperExpresses || {};
+        const hasExpress = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
+        if (viewMode === "express" && !hasExpress && (board.singlesCount || 0) > 0) {
+          viewMode = "a";
+          saveViewMode("a");
+        }
+
         if (isBoardWarming(board)) {
           showBanner(board.note || "Прогрев… подожди, страница обновится сама (до 2 минут).", true);
         } else if (board.error) showBanner(board.error, true);
