@@ -1,11 +1,10 @@
 services:
   - type: web
-    name: express-agent
+    name: na-chto-stavit
     runtime: node
-    plan: free
+    region: frankfurt
     buildCommand: npm install
-    startCommand: node server.mjs
-    healthCheckPath: /
+    startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: "20"

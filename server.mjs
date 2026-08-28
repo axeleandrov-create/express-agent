@@ -12,6 +12,7 @@ import { settleExpresses } from "./lib/expressSettle.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)));
 const PORT = Number(process.env.PORT) || 3006;
+const IS_CLOUD = Boolean(process.env.RENDER);
 
 function slimCapperExpress(ex) {
   if (!ex || typeof ex !== "object") return null;
@@ -203,6 +204,15 @@ async function getBoard(force = false) {
     return kickRebuild(true);
   }
 
+  // В облаке первый запрос ждём сборку ленты (иначе пустой экран).
+  if (IS_CLOUD && !cache.data) {
+    try {
+      return await kickRebuild(false);
+    } catch {
+      return emptyBoard("Прогрев ленты… подожди до 2 минут, страница обновится сама.");
+    }
+  }
+
   kickRebuild(false);
 
   if (cache.data) {
@@ -390,8 +400,8 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, "Not found");
 });
 
-server.listen(PORT, () => {
-  console.log(`express-agent: http://127.0.0.1:${PORT}/`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`express-agent: http://0.0.0.0:${PORT}/ (cloud=${IS_CLOUD})`);
 });
 
 // Прогрев в фоне (не блокирует первый запрос UI)
