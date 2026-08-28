@@ -2415,7 +2415,42 @@
     }
 
     let warmPollTimer = null;
+    let warmHealthTimer = null;
     let firstLoad = true;
+
+    function warmHintHtml(extra = "") {
+      return `<div class="hint">Прогрев ленты… после перезапуска это может занять до 2 минут.${extra ? `<br><span id="warm-progress">${escapeHtml(extra)}</span>` : ""}</div>`;
+    }
+
+    function stopWarmHealthPoll() {
+      if (warmHealthTimer) {
+        clearInterval(warmHealthTimer);
+        warmHealthTimer = null;
+      }
+    }
+
+    function startWarmHealthPoll() {
+      stopWarmHealthPoll();
+      warmHealthTimer = setInterval(async () => {
+        try {
+          const res = await fetch("/api/health", { cache: "no-store" });
+          if (!res.ok) return;
+          const h = await res.json();
+          const el = document.getElementById("warm-progress");
+          if (!el) return;
+          if (h.warming) {
+            const n = Number(h.matches) || 0;
+            el.textContent = n > 0
+              ? `Сервер собирает ленту… уже ${n} матчей в обработке.`
+              : "Сервер проснулся, собираем матчи…";
+          } else if ((Number(h.matches) || 0) > 0) {
+            el.textContent = `Готово: ${h.matches} матчей. Догружаю на экран…`;
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 3000);
+    }
 
     function isBoardWarming(data = board) {
       const fb = (data.singlesBySport?.football || []).length;
@@ -2433,13 +2468,13 @@
 
     async function load(force) {
       const warmingUi = force ? false : isBoardWarming();
-      contentEl.innerHTML = `<div class="hint">${
-        force
-          ? "Тянем свежие матчи…"
-          : warmingUi || firstLoad
-            ? "Прогрев ленты… после перезапуска это может занять до 2 минут."
-            : "Загрузка…"
-      }</div>`;
+      if (force) stopWarmHealthPoll();
+      else if (warmingUi || firstLoad) startWarmHealthPoll();
+      contentEl.innerHTML = force
+        ? `<div class="hint">Тянем свежие матчи…</div>`
+        : warmingUi || firstLoad
+          ? warmHintHtml()
+          : `<div class="hint">Загрузка…</div>`;
       try {
         const ctrl = new AbortController();
         const timeoutMs = force || firstLoad || warmingUi ? 180000 : 30000;
@@ -2452,6 +2487,7 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         board = await res.json();
         firstLoad = false;
+        stopWarmHealthPoll();
 
         const fb = (board.singlesBySport?.football || []).length;
         if (isBoardWarming(board)) {
@@ -2477,10 +2513,12 @@
       } catch (e) {
         if (e?.name === "AbortError" && (firstLoad || isBoardWarming())) {
           showBanner("Прогрев ленты… жду ответ сервера, не закрывай вкладку.", true);
-          contentEl.innerHTML = `<div class="hint">Прогрев ленты… после перезапуска сервера это нормально, подожди до 2 минут.</div>`;
+          contentEl.innerHTML = warmHintHtml("Жду ответ сервера…");
+          startWarmHealthPoll();
           scheduleWarmPoll();
           return;
         }
+        stopWarmHealthPoll();
         const msg = e?.name === "AbortError"
           ? "Слишком долго нет ответа — обнови страницу (F5)."
           : `Не удалось загрузить данные (${e?.message || "сеть"}).`;
