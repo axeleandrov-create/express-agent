@@ -2434,10 +2434,14 @@
       warmHealthTimer = setInterval(async () => {
         try {
           const res = await fetch("/api/health", { cache: "no-store" });
-          if (!res.ok) return;
-          const h = await res.json();
           const el = document.getElementById("warm-progress");
           if (!el) return;
+          if ([404, 502, 503].includes(res.status)) {
+            el.textContent = "Облачный сервер просыпается… обычно 30–60 сек, не закрывай вкладку.";
+            return;
+          }
+          if (!res.ok) return;
+          const h = await res.json();
           if (h.warming) {
             const n = Number(h.matches) || 0;
             el.textContent = n > 0
@@ -2450,6 +2454,30 @@
           /* ignore */
         }
       }, 3000);
+    }
+
+    function isWakeStatus(status) {
+      return status === 404 || status === 502 || status === 503;
+    }
+
+    async function fetchUntilReady(url, signal) {
+      const started = Date.now();
+      const maxMs = 180000;
+      while (Date.now() - started < maxMs) {
+        const res = await fetch(url, { cache: "no-store", signal });
+        if (res.ok) return res;
+        if (!isWakeStatus(res.status)) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const el = document.getElementById("warm-progress");
+        if (el) {
+          el.textContent = "Облачный сервер просыпается… обычно 30–60 сек, не закрывай вкладку.";
+        } else {
+          contentEl.innerHTML = warmHintHtml("Облачный сервер просыпается… обычно 30–60 сек.");
+        }
+        await new Promise((r) => setTimeout(r, 4000));
+      }
+      throw new Error("HTTP 404");
     }
 
     function isBoardWarming(data = board) {
@@ -2479,10 +2507,10 @@
         const ctrl = new AbortController();
         const timeoutMs = force || firstLoad || warmingUi ? 180000 : 30000;
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-        const res = await fetch(force ? "/api/matches?refresh=1" : "/api/matches", {
-          signal: ctrl.signal,
-          cache: "no-store",
-        });
+        const url = force ? "/api/matches?refresh=1" : "/api/matches";
+        const res = firstLoad || warmingUi
+          ? await fetchUntilReady(url, ctrl.signal)
+          : await fetch(url, { signal: ctrl.signal, cache: "no-store" });
         clearTimeout(timer);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         board = await res.json();
@@ -2511,8 +2539,11 @@
         await render();
         scheduleWarmPoll();
       } catch (e) {
-        if (e?.name === "AbortError" && (firstLoad || isBoardWarming())) {
-          showBanner("Прогрев ленты… жду ответ сервера, не закрывай вкладку.", true);
+        if (
+          (e?.name === "AbortError" || /HTTP 404|HTTP 502|HTTP 503/.test(String(e?.message || ""))) &&
+          (firstLoad || isBoardWarming())
+        ) {
+          showBanner("Сервер просыпается… не закрывай вкладку, подожди до 2 минут.", true);
           contentEl.innerHTML = warmHintHtml("Жду ответ сервера…");
           startWarmHealthPoll();
           scheduleWarmPoll();
