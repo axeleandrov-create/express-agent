@@ -276,11 +276,9 @@ const server = http.createServer(async (req, res) => {
         apiVersion: 2,
         features: { expressTake: true, expressReplace: true, expressSettle: true },
         matches: cache.data?.matchCount ?? 0,
+        singles: cache.data?.singlesCount ?? 0,
         top: cache.data?.topCount ?? 0,
-        warming: Boolean(
-          (inflightFast && !cache.data) ||
-            (inflightFull && cache.tier !== "full"),
-        ),
+        warming: Boolean(!cache.data && (inflightFast || inflightFull)),
         enrichTier: cache.tier || (inflightFast ? "fast" : null),
       }),
       "application/json; charset=utf-8",

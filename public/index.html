@@ -2565,11 +2565,12 @@
           const h = await res.json();
           if (h.warming) {
             const n = Number(h.matches) || 0;
-            el.textContent = n > 0
-              ? `Сервер собирает ленту… уже ${n} матчей в обработке.`
+            const s = Number(h.singles) || 0;
+            el.textContent = n > 0 || s > 0
+              ? `Готово: ${s || n} в ленте. Догружаю на экран…`
               : "Сервер проснулся, собираем матчи…";
-          } else if ((Number(h.matches) || 0) > 0) {
-            el.textContent = `Готово: ${h.matches} матчей. Догружаю на экран…`;
+          } else if ((Number(h.matches) || 0) > 0 || (Number(h.singles) || 0) > 0) {
+            el.textContent = `Готово: ${h.singles || h.matches} в ленте. Догружаю на экран…`;
           }
         } catch {
           /* ignore */
@@ -2607,7 +2608,8 @@
               continue;
             }
             const n = Number(h.matches) || 0;
-            if (n > 0 && !h.warming) return;
+            const s = Number(h.singles) || 0;
+            if (n > 0 || s > 0) return;
             updateWarmProgress(
               h.warming
                 ? n > 0
@@ -2647,11 +2649,15 @@
       if (!isBoardWarming(data)) return data;
 
       const started = Date.now();
-      while (Date.now() - started < 60000) {
+      while (Date.now() - started < 45000) {
         updateWarmProgress(data.note || "Догружаю матчи на экран…");
-        await new Promise((r) => setTimeout(r, 3000));
-        data = await fetchBoardQuick(url, signal);
-        if (!isBoardWarming(data)) return data;
+        await new Promise((r) => setTimeout(r, 2500));
+        try {
+          data = await fetchBoardQuick(url, signal);
+          if (!isBoardWarming(data)) return data;
+        } catch {
+          /* retry */
+        }
       }
       return data;
     }
