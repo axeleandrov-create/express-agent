@@ -2521,18 +2521,7 @@
         if (isBoardWarming(board)) {
           showBanner(board.note || "Прогрев… подожди, страница обновится сама (до 2 минут).", true);
         } else if (board.error) showBanner(board.error, true);
-        else if (viewMode !== "stats") {
-          const fb = (board.singlesBySport?.football || []).length;
-          const bannerMsg =
-            viewMode === "express"
-              ? "Экспрессы из одинаров A — три уровня риска."
-              : viewMode === "archive"
-                ? "Dev-вкладка: B и C. Основная лента показывает только A."
-                : `В ленте тир A · футбол ${fb}. B/C — во вкладке «Dev · B/C».`;
-          showBanner(bannerMsg, false);
-        } else {
-          showBanner("", false);
-        }
+        else showBanner("");
 
         sportTab = "football";
         await settleExpressHistory();
@@ -2582,17 +2571,7 @@
           if (!hasAny && !board.warming) load(true);
         }
         await render();
-        if (viewMode === "stats") {
-          showBanner("", false);
-        } else if (board.ok !== false && Object.keys(board).length) {
-          const msg =
-            viewMode === "express"
-              ? "Экспрессы из одинаров A."
-              : viewMode === "archive"
-                ? "Dev-вкладка: B и C. Основная лента показывает только A."
-                : `В ленте только тир A. B и C — во вкладке «Dev · B/C». Кф основной ≥ 1.33.`;
-          showBanner(msg, false);
-        }
+        if (!board.error && !isBoardWarming(board)) showBanner("");
       });
     });
 
