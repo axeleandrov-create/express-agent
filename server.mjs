@@ -323,10 +323,16 @@ const server = http.createServer(async (req, res) => {
       const board = await getBoard(false);
       const singlesA = Object.values(board.singlesBySport || {}).flat();
       const excludeKeys = Array.isArray(body.excludeKeys) ? body.excludeKeys : [];
-      const mustChangeKeys = Array.isArray(body.mustChangeKeys) ? body.mustChangeKeys : [];
+      const previousKeys = Array.isArray(body.previousKeys)
+        ? body.previousKeys
+        : Array.isArray(body.mustChangeKeys)
+          ? body.mustChangeKeys
+          : [];
+      const minChangedLegs = Number(body.minChangedLegs) || (previousKeys.length ? 1 : 0);
       const replaceSeed = Number(body.replaceSeed) || 0;
       const coupon = rebuildCapperLevel(level, singlesA, excludeKeys, {
-        mustChangeKeys,
+        previousKeys,
+        minChangedLegs,
         replaceSeed,
       });
       const slim = slimCapperExpress(coupon);
@@ -338,6 +344,8 @@ const server = http.createServer(async (req, res) => {
           level,
           coupon: slim,
           partial: Boolean(coupon?._partialReplace),
+          changedLegs: coupon?._changedLegs ?? 0,
+          totalLegs: slim?.matches?.length ?? 0,
         }),
         "application/json; charset=utf-8",
       );

@@ -1015,6 +1015,70 @@
       return [...keys];
     }
 
+    function collectTakenExpressKeys() {
+      const keys = new Set();
+      for (const ex of loadExpressHistory()) {
+        if (ex.result !== "pending") continue;
+        keys.add(legsKey(ex.legs));
+      }
+      return keys;
+    }
+
+    function couponUsesTakenLegs(coupon) {
+      if (!coupon?.matches?.length) return false;
+      const takenLegs = new Set(collectExcludeKeys());
+      const takenCoupons = collectTakenExpressKeys();
+      if (takenCoupons.has(expressLegsKeyFromCoupon(coupon))) return true;
+      return coupon.matches.some((m) => takenLegs.has(matchPickKey(m.home, m.away)));
+    }
+
+    async function fetchCapperExpressLevel(level, excludeKeys = collectExcludeKeys()) {
+      const res = await fetch("/api/express/take", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level, excludeKeys }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.coupon?.matches?.length ? data.coupon : null;
+    }
+
+    /** Пересобрать купоны, если в них есть матчи из «В работе». */
+    async function refreshCapperExpressesAgainstHistory() {
+      if (board.warming || !(board.singlesCount > 0)) return false;
+      if (!collectExcludeKeys().length) return false;
+
+      let changed = false;
+      for (const level of ["safe", "medium", "risky"]) {
+        const coupon = board.capperExpresses?.[level];
+        if (!coupon?.matches?.length) continue;
+        if (!couponUsesTakenLegs(coupon)) continue;
+        const next = await fetchCapperExpressLevel(level);
+        if (next && !couponUsesTakenLegs(next)) {
+          if (!board.capperExpresses) board.capperExpresses = {};
+          board.capperExpresses[level] = next;
+          changed = true;
+        }
+      }
+      return changed;
+    }
+
+    function syncTakenMarksWithBoard() {
+      for (const level of ["safe", "medium", "risky"]) {
+        const coupon = board.capperExpresses?.[level];
+        if (!coupon?.matches?.length) {
+          clearExpressTakenMark(level);
+          continue;
+        }
+        const key = expressLegsKeyFromCoupon(coupon);
+        const taken = loadExpressHistory().some(
+          (ex) => ex.result === "pending" && legsKey(ex.legs) === key,
+        );
+        if (taken) markExpressTaken(level);
+        else clearExpressTakenMark(level);
+      }
+    }
+
     /** При замене — только pending из статистики; другие купоны на экране не блокируем. */
     function collectExpressReplaceExcludeKeys(_currentLevel) {
       return collectExcludeKeys();
@@ -1071,12 +1135,12 @@
       saveExpressHistory(next);
       expressHistoryCache = next;
       showToast("Купон отменён");
-      render();
+      refreshCapperExpressesAgainstHistory().then(() => render());
     }
 
     const expressFillLevels = new Set();
 
-    async function ensureMissingCapperExpresses(levels = ["safe"]) {
+    async function ensureMissingCapperExpresses(levels = ["safe", "medium", "risky"]) {
       if (board.warming || !(board.singlesCount > 0)) return false;
       const missing = levels.filter((lv) => !board.capperExpresses?.[lv]?.matches?.length);
       if (!missing.length) return false;
@@ -1086,16 +1150,10 @@
         if (expressFillLevels.has(level)) continue;
         expressFillLevels.add(level);
         try {
-          const res = await fetch("/api/express/take", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ level, excludeKeys: [] }),
-          });
-          if (!res.ok) continue;
-          const data = await res.json();
-          if (data.coupon?.matches?.length) {
+          const coupon = await fetchCapperExpressLevel(level);
+          if (coupon) {
             if (!board.capperExpresses) board.capperExpresses = {};
-            board.capperExpresses[level] = data.coupon;
+            board.capperExpresses[level] = coupon;
             changed = true;
           }
         } catch (e) {
@@ -1161,14 +1219,17 @@
         console.warn("take express:", e);
       }
 
+      await refreshCapperExpressesAgainstHistory();
+      syncTakenMarksWithBoard();
       if (viewMode === "express") await render({ skipSettle: true });
     }
 
-    async function fetchExpressReplace(level, excludeKeys, mustChangeKeys) {
+    async function fetchExpressReplace(level, excludeKeys, previousKeys) {
       const payload = {
         level,
         excludeKeys,
-        mustChangeKeys,
+        previousKeys,
+        minChangedLegs: 1,
         replaceSeed: Date.now(),
       };
       let res = await fetch("/api/express/replace", {
@@ -1200,7 +1261,7 @@
       const prevKeys = new Set(
         (coupon.matches || []).map((m) => matchPickKey(m.home, m.away)),
       );
-      const mustChangeKeys = [...prevKeys];
+      const previousKeys = [...prevKeys];
       const excludeKeys = collectExpressReplaceExcludeKeys(level);
       expressReplacing = level;
       expressReplaceConfirm = null;
@@ -1209,7 +1270,7 @@
       try {
         let data = null;
         for (let attempt = 0; attempt < 2; attempt++) {
-          const res = await fetchExpressReplace(level, excludeKeys, mustChangeKeys);
+          const res = await fetchExpressReplace(level, excludeKeys, previousKeys);
           if (!res.ok) {
             if (res.status === 404) {
               showToast("Сервер старой версии — закрой окно «Экспресс-агент» и запусти start.bat");
@@ -1246,10 +1307,14 @@
             if (k.startsWith(`${level}|`)) expressOpenLegs.delete(k);
           }
           clearExpressTakenMark(level);
-          if (data.partial) {
-            showToast("Новый состав — часть матчей совпадает с другими купонами");
+          const changed = Number(data.changedLegs) || 0;
+          const total = Number(data.totalLegs) || data.coupon.matches.length;
+          if (changed === 0) {
+            showToast("Других матчей A не нашлось — в ленте мало одинаров");
+          } else if (changed < total) {
+            showToast(`Заменили ${changed} из ${total} матчей — больше A сейчас нет`);
           } else {
-            showToast(same ? "Других матчей A не нашлось" : "Экспресс заменён");
+            showToast("Экспресс полностью обновлён");
           }
         } else {
           showToast(data?.error || "Не хватает A для другого купона");
@@ -2561,11 +2626,11 @@
 
         sportTab = "football";
         await settleExpressHistory();
+        const refreshed = await refreshCapperExpressesAgainstHistory();
+        const filled = await ensureMissingCapperExpresses(["safe", "medium", "risky"]);
+        syncTakenMarksWithBoard();
         await render();
-        if (!board.capperExpresses?.safe?.matches?.length) {
-          const filled = await ensureMissingCapperExpresses(["safe"]);
-          if (filled) await render({ skipSettle: true });
-        }
+        if (refreshed || filled) await render({ skipSettle: true });
         scheduleWarmPoll();
       } catch (e) {
         if (
@@ -2609,9 +2674,10 @@
           const cap = board.capperExpresses || {};
           const hasAny = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
           if (!hasAny && !board.warming) load(true);
-          else if (!cap.safe?.matches?.length && !board.warming) {
-            const filled = await ensureMissingCapperExpresses(["safe"]);
-            if (filled) await render({ skipSettle: true });
+          else {
+            const refreshed = await refreshCapperExpressesAgainstHistory();
+            syncTakenMarksWithBoard();
+            if (refreshed) await render({ skipSettle: true });
           }
         }
         await render();
