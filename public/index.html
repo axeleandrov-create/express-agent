@@ -698,6 +698,7 @@
   </div>
 
   <script>
+    const BUILD = "20260828c";
     const contentEl = document.getElementById("content");
     const bannerEl = document.getElementById("banner");
     const boardStatusEl = document.getElementById("boardStatus");
@@ -798,8 +799,8 @@
       if (data.error) return String(data.error).slice(0, 120);
       if (isBoardWarming(data)) return data.note || "Прогрев ленты…";
       const n = data.singlesCount || singlesVisibleCount(data);
-      if (n > 0) return `${n} одинаров A · ${data.matchCount || 0} матчей в ленте`;
-      return "Сейчас пусто — нажми «Обновить»";
+      if (n > 0) return `${n} одинаров A · ${data.matchCount || 0} матчей · v${BUILD}`;
+      return `Сейчас пусто — нажми «Обновить» · v${BUILD}`;
     }
 
     function loadViewMode() {
