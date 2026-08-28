@@ -681,6 +681,8 @@
   <div class="page">
     <header>
       <h1>На что ставить</h1>
+      <div class="sub" id="boardStatus">Загрузка ленты…</div>
+      <button class="btn" type="button" id="btnHeaderRefresh" style="margin-top:8px;min-height:44px">Обновить ленту</button>
     </header>
 
     <div class="mode-tabs" id="viewTabs">
@@ -698,6 +700,8 @@
   <script>
     const contentEl = document.getElementById("content");
     const bannerEl = document.getElementById("banner");
+    const boardStatusEl = document.getElementById("boardStatus");
+    const IS_MOBILE = window.matchMedia("(max-width: 768px)").matches || "ontouchstart" in window;
 
     let board = {};
     let sportTab = "football";
@@ -761,7 +765,52 @@
       }
     }
 
+    function updateBoardStatus(text) {
+      if (boardStatusEl) boardStatusEl.textContent = text || "";
+    }
+
+    function singlesVisibleCount(data = board) {
+      return Object.values(data.singlesBySport || {}).reduce((n, arr) => n + (arr?.length || 0), 0);
+    }
+
+    function viewShowsNoMatches(mode, data = board) {
+      if (mode === "a") return singlesVisibleCount(data) === 0 && !(data.singlesCount > 0);
+      if (mode === "express") {
+        const cap = data.capperExpresses || {};
+        return !["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
+      }
+      if (mode === "stats") {
+        const items = repairExpressHistory(loadExpressHistory(), { persist: false });
+        return !items.some((e) => e.result === "pending");
+      }
+      return false;
+    }
+
+    function ensureSinglesView(data = board) {
+      const n = data.singlesCount || singlesVisibleCount(data);
+      if (n > 0 && viewShowsNoMatches(viewMode, data)) {
+        viewMode = "a";
+        saveViewMode("a");
+      }
+    }
+
+    function formatBoardStatus(data = board) {
+      if (data.error) return String(data.error).slice(0, 120);
+      if (isBoardWarming(data)) return data.note || "Прогрев ленты…";
+      const n = data.singlesCount || singlesVisibleCount(data);
+      if (n > 0) return `${n} одинаров A · ${data.matchCount || 0} матчей в ленте`;
+      return "Сейчас пусто — нажми «Обновить»";
+    }
+
     function loadViewMode() {
+      try {
+        const m = localStorage.getItem(VIEW_MODE_KEY);
+        return ["a", "express", "stats", "archive"].includes(m) ? m : "a";
+      } catch {
+        return "a";
+      }
+    }
+
       try {
         const m = localStorage.getItem(VIEW_MODE_KEY);
         return ["a", "express", "stats", "archive"].includes(m) ? m : "a";
@@ -2538,6 +2587,7 @@
     let warmPollTimer = null;
     let warmHealthTimer = null;
     let firstLoad = true;
+    let loadInFlight = false;
 
     function warmHintHtml(extra = "") {
       return `<div class="hint">Прогрев ленты… после перезапуска до 2 минут. <b>Не закрывай вкладку.</b>${extra ? `<br><span id="warm-progress">${escapeHtml(extra)}</span>` : '<br><span id="warm-progress">Запуск…</span>'}</div>`;
@@ -2597,7 +2647,23 @@
       const maxMs = 300000;
       const started = Date.now();
       while (Date.now() - started < maxMs) {
+        const sec = Math.round((Date.now() - started) / 1000);
         try {
+          const hres = await fetch("/api/health", { cache: "no-store" });
+          if (hres.ok) {
+            const h = await hres.json();
+            const s = Number(h.singles) || 0;
+            const n = Number(h.matches) || 0;
+            if (s > 0 || n > 0) {
+              updateWarmProgress(`На сервере ${s || n} · загружаю на экран… (${sec} с)`);
+              updateBoardStatus(`На сервере ${s || n} · загружаю…`);
+            } else {
+              updateWarmProgress(`Собираем матчи… ${sec} с (до 2 мин, не закрывай вкладку)`);
+              updateBoardStatus(`Прогрев ленты… ${sec} с`);
+            }
+          } else if (isWakeStatus(hres.status)) {
+            updateWarmProgress(`Сервер просыпается… ${sec} с`);
+          }
           const data = await fetchBoardQuick(url);
           if (!isBoardWarming(data)) return data;
           updateWarmProgress(data.note || "Собираем матчи…");
@@ -2605,11 +2671,11 @@
           const msg = String(e?.message || "");
           updateWarmProgress(
             /HTTP 404|HTTP 502|HTTP 503/.test(msg)
-              ? "Сервер просыпается… не закрывай вкладку."
-              : "Повтор загрузки…",
+              ? `Сервер просыпается… ${sec} с`
+              : `Повтор загрузки… ${sec} с`,
           );
         }
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 3000));
       }
       throw new Error("HTTP 503");
     }
@@ -2642,11 +2708,10 @@
     }
 
     function isBoardWarming(data = board) {
-      const fb = (data.singlesBySport?.football || []).length;
-      return (
-        data.warming ||
-        (!data.error && fb === 0 && (data.singlesCount || 0) === 0 && (data.matchCount || 0) === 0)
-      );
+      const n = data.singlesCount || singlesVisibleCount(data);
+      const mc = data.matchCount || 0;
+      if (n > 0 || mc > 0) return false;
+      return Boolean(data.warming) || (!data.error && n === 0 && mc === 0);
     }
 
     function scheduleWarmPoll() {
@@ -2656,9 +2721,12 @@
     }
 
     async function load(force) {
+      if (loadInFlight && !force) return;
+      loadInFlight = true;
       const warmingUi = force ? false : isBoardWarming();
       if (force) stopWarmHealthPoll();
-      else if (warmingUi || firstLoad) startWarmHealthPoll();
+      else if (warmingUi && !firstLoad) startWarmHealthPoll();
+      updateBoardStatus("Загрузка…");
       contentEl.innerHTML = force
         ? `<div class="hint">Тянем свежие матчи…</div>`
         : warmingUi || firstLoad
@@ -2682,18 +2750,14 @@
         firstLoad = false;
         stopWarmHealthPoll();
 
-        const cap = board.capperExpresses || {};
-        const hasExpress = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
-        if (viewMode === "express" && !hasExpress && (board.singlesCount || 0) > 0) {
-          viewMode = "a";
-          saveViewMode("a");
-        }
+        ensureSinglesView(board);
 
         if (isBoardWarming(board)) {
           showBanner(board.note || "Прогрев… подожди, страница обновится сама (до 2 минут).", true);
         } else if (board.error) showBanner(board.error, true);
         else showBanner("");
 
+        updateBoardStatus(formatBoardStatus(board));
         sportTab = "football";
         await render();
         enrichBoardAfterLoad();
@@ -2724,8 +2788,15 @@
           firstLoad = true;
           load(false);
         });
+      } finally {
+        loadInFlight = false;
       }
     }
+
+    document.getElementById("btnHeaderRefresh")?.addEventListener("click", () => {
+      firstLoad = true;
+      load(true);
+    });
 
     document.getElementById("viewTabs")?.addEventListener("click", async (ev) => {
       const b = ev.target.closest("[data-view]");

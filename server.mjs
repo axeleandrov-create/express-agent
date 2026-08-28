@@ -228,7 +228,6 @@ async function getBoard(force = false) {
   // В облаке не блокируем HTTP — телефон обрывает долгие запросы (~60 с).
   if (IS_CLOUD && !cache.data) {
     if (!inflightFast) kickRebuild(false, "fast").then(() => scheduleFullRebuild(false));
-    else scheduleFullRebuild(false);
     return emptyBoard("Прогрев ленты… обычно 30–90 сек, страница обновится сама.");
   }
 
