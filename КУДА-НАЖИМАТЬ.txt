@@ -1,0 +1,47 @@
+КУДА НАЖИМАТЬ — ПОШАГОВО
+========================
+
+САМЫЙ ПРОСТОЙ СПОСОБ (телефон рядом с компом, одна Wi‑Fi)
+-----------------------------------------------------------
+1. На компе дважды кликни: start.bat
+2. На iPhone открой Safari
+3. Вверху в строку адреса вставь и Enter:
+
+   http://192.168.0.104:3006
+
+   Пароль не нужен.
+
+
+ПОСТОЯННАЯ ССЫЛКА (через GitHub + Render)
+-----------------------------------------
+
+ШАГ 1 — Войти в GitHub (один раз)
+1. Нажми Win, набери: cmd — Enter
+2. В чёрном окне вставь и Enter:
+
+   gh auth login
+
+3. Стрелками выбери GitHub.com — Enter
+4. HTTPS — Enter
+5. Login with a web browser — Enter
+6. Скопируй код (Ctrl+C)
+7. Enter — откроется браузер
+8. Вставь код, войди в GitHub, нажми Authorize / Разрешить
+
+ШАГ 2 — Залить проект на GitHub
+1. Проводник → Рабочий стол → Proj → projects → express-agent
+2. Дважды кликни: publish-github.bat
+3. Имя репозитория: express-agent — Enter
+4. Дождись «Готово» — скопируй ссылку github.com/...
+
+ШАГ 3 — Сайт в облаке (Render)
+1. Браузер: https://render.com
+2. Sign Up → Continue with GitHub (войти через GitHub)
+3. После входа: https://dashboard.render.com/select-repo?type=blueprint
+4. Connect account / Подключить — если спросит GitHub
+5. Выбери репозиторий express-agent
+6. Кнопка Apply / Deploy Blueprint / Создать
+7. Подожди 3–5 минут — появится ссылка https://....onrender.com
+8. Эту ссылку открой в Safari на телефоне
+
+Если что-то не получается — напиши на каком шаге застрял (1, 2 или 3).

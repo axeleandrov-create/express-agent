@@ -1,0 +1,13 @@
+cache/
+scripts/_*.html
+scripts/_probe-*/
+scripts/_stavka-*.json
+scripts/_stavka-*.txt
+scripts/_understat-*.html
+.env
+.env.local
+node_modules/
+*.log
+data/*.sqlite
+data/*.sqlite-*
+

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: express-agent
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.mjs
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

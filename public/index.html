@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>На что ставить</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f3f4f6; --card: #fff; --text: #111827; --muted: #6b7280;
+      --line: #e5e7eb; --accent: #1d4ed8; --soft: #eff6ff;
+      --radius: 10px;
+    }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.45; min-height: 100vh;
+    }
+    .page { max-width: 820px; margin: 0 auto; padding: 18px 14px 56px; }
+    header h1 { font-size: 1.35rem; font-weight: 800; }
+    header .sub { color: var(--muted); font-size: 0.86rem; margin-top: 4px; }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      justify-content: space-between; margin: 12px 0;
+    }
+    .toolbar .meta { flex: 1; min-width: 0; }
+    .mode-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; width: 100%; }
+    .mode-tabs [data-view="archive"] { margin-left: auto; }
+    .btn {
+      border: 1px solid var(--line); background: var(--card); color: var(--text);
+      padding: 8px 12px; border-radius: 8px; font: inherit; font-size: 0.86rem;
+      font-weight: 600; cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.55; cursor: wait; }
+    .btn.on {
+      background: #f3f4f6; color: var(--text); border-color: #9ca3af;
+    }
+    .meta { font-size: 0.76rem; color: var(--muted); }
+    .banner {
+      background: var(--soft); border: 1px solid #bfdbfe; color: #1e3a8a;
+      border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; font-size: 0.86rem;
+    }
+    .banner.err { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .block {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 12px 14px; margin-bottom: 12px;
+    }
+    .stat-entry.block {
+      padding: 8px 10px; margin-bottom: 8px; border-radius: 8px;
+    }
+    .sec { font-weight: 800; font-size: 0.95rem; margin-bottom: 8px; }
+    .hint { color: var(--muted); font-size: 0.84rem; margin-bottom: 8px; }
+    .sport-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .row {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline;
+      justify-content: space-between;
+      padding: 10px 0; border-top: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .row:first-of-type { border-top: none; padding-top: 2px; }
+    .row:hover { background: #f9fafb; }
+    .row.open { background: #f8fafc; }
+    .teams { font-weight: 650; }
+    .pick { font-weight: 800; color: var(--accent); white-space: nowrap; }
+    .alts { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .meta-line { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .detail {
+      display: none; margin-top: 10px; padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .row.open .detail { display: block; }
+    .profiles {
+      display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-bottom: 10px;
+    }
+    @media (max-width: 640px) {
+      .profiles { grid-template-columns: 1fr; }
+    }
+    .prof {
+      background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .prof .pn { font-weight: 700; font-size: 0.8rem; margin-bottom: 6px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      font-size: 0.7rem; padding: 3px 7px; border-radius: 999px;
+      background: #f3f4f6; color: #374151; border: 1px solid var(--line);
+    }
+    .chip.hi { background: #ecfdf5; border-color: #a7f3d0; color: #047857; font-weight: 700; }
+    .why-list { display: flex; flex-direction: column; gap: 6px; }
+    .why-row {
+      display: grid; grid-template-columns: 4.2rem 1fr; gap: 8px; align-items: start;
+      font-size: 0.8rem; line-height: 1.35;
+    }
+    .why-row .tag {
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--accent); padding-top: 2px;
+    }
+    .why-row .body { color: #1f2937; min-width: 0; }
+    .why-row .body strong { font-weight: 750; }
+    .why-row .body .hint-r { color: var(--muted); font-weight: 500; }
+    .tier {
+      font-size: 0.72rem; font-weight: 800; border: 1px solid var(--line);
+      border-radius: 4px; padding: 1px 6px; color: var(--muted);
+    }
+    .tier.A { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+    .tier.B { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+    .tier.C { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+    .tier-legend {
+      font-size: 0.72rem; color: var(--muted); margin: 0 0 10px;
+      display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+    }
+    .tier-legend .tier { cursor: default; }
+    .singles-head {
+      display: flex; flex-wrap: wrap; gap: 8px 12px;
+      align-items: flex-start; justify-content: space-between;
+    }
+    .singles-head .sec { margin-bottom: 0; }
+    .btn-custom-express { white-space: nowrap; }
+    .row.pick-mode { cursor: pointer; }
+    .row.custom-picked { background: #eff6ff; }
+    .custom-pick-badge {
+      font-size: 0.72rem; font-weight: 800; border: 1px solid var(--line);
+      border-radius: 4px; padding: 2px 8px; color: var(--muted); min-width: 2rem; text-align: center;
+    }
+    .custom-pick-badge.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .custom-pick-bar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: min(820px, 100%); padding: 10px 14px 14px;
+      background: var(--card); border-top: 1px solid var(--line);
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.08);
+      display: flex; flex-wrap: wrap; gap: 8px 12px;
+      align-items: center; justify-content: space-between;
+      z-index: 100;
+    }
+    .custom-pick-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-size: 0.86rem; }
+    .custom-pick-meta span { color: var(--muted); font-size: 0.8rem; }
+    .custom-pick-actions { display: flex; gap: 6px; }
+    body.custom-pick-open .page { padding-bottom: 88px; }
+    .ex-head {
+      display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+      align-items: baseline; margin-bottom: 6px;
+    }
+    .ex-odds { font-weight: 800; color: var(--accent); font-size: 1.05rem; }
+    .ex-row {
+      display: flex; align-items: flex-start; gap: 6px; margin-bottom: 12px;
+    }
+    .ex-row .ex-panel {
+      flex: 1; min-width: 0; margin-bottom: 0; padding: 0; overflow: hidden;
+    }
+    .ex-blind-toggle {
+      width: 100%; border: none; background: transparent; text-align: left;
+      cursor: pointer; padding: 12px 14px; font: inherit; color: inherit;
+    }
+    .ex-blind-toggle:hover { background: #f9fafb; }
+    .ex-blind-head {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; width: 100%;
+    }
+    .ex-blind-head .sec { margin: 0; }
+    .ex-blind-head .hint { margin: 0; width: 100%; }
+    .ex-blind-chevron {
+      margin-left: auto; color: var(--muted); font-size: 0.75rem;
+      transition: transform 0.22s ease;
+    }
+    .ex-panel.open .ex-blind-chevron { transform: rotate(180deg); }
+    .ex-blind-body {
+      max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+      padding: 0 14px; border-top: 1px solid transparent;
+    }
+    .ex-panel.open .ex-blind-body {
+      max-height: 2400px; padding-bottom: 4px; border-top-color: var(--line);
+    }
+    .ex-take-wrap {
+      display: flex; justify-content: center; padding: 10px 14px 12px;
+      border-top: 1px solid var(--line);
+    }
+    .ex-take-wrap .btn-take { min-width: 200px; margin-top: 0; }
+    .btn-take.taken {
+      background: #e5e7eb; border-color: #d1d5db; color: #6b7280; cursor: default;
+    }
+    .btn-ex-refresh svg { pointer-events: none; }
+    .ex-row-side {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      flex-shrink: 0; min-width: 36px;
+    }
+    .ex-replace-confirm {
+      display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+      font-size: 0.74rem; color: var(--text); text-align: center;
+    }
+    .ex-replace-confirm .btn { padding: 4px 8px; font-size: 0.72rem; width: 100%; }
+    .btn-ex-refresh {
+      flex-shrink: 0; border: none; background: transparent; color: #dc2626;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      margin-top: 12px; padding: 4px; line-height: 0;
+    }
+    .btn-ex-refresh:hover:not(:disabled) { color: #b91c1c; }
+    .btn-ex-refresh:disabled { opacity: 0.45; cursor: wait; }
+    .btn-ex-refresh.spinning svg { animation: ex-spin 0.75s linear infinite; }
+    @keyframes ex-spin { to { transform: rotate(360deg); } }
+    .leg {
+      padding: 0; border-top: none; font-size: 0.86rem;
+    }
+    .leg .pick { font-size: 0.9rem; }
+    .ex-leg-accordion { border-top: 1px solid var(--line); }
+    .ex-leg-accordion:first-child { border-top: none; }
+    .ex-leg-toggle {
+      width: 100%; border: none; background: transparent; cursor: pointer;
+      padding: 9px 0; font: inherit; color: inherit; text-align: left;
+    }
+    .ex-leg-toggle:hover { background: #fafafa; }
+    .leg-ex-row {
+      display: flex; align-items: flex-start; gap: 10px; width: 100%;
+    }
+    .leg-ex-info { flex: 1; min-width: 0; }
+    .leg-ex-info .teams { font-weight: 700; font-size: 0.86rem; }
+    .leg-ex-pick {
+      flex-shrink: 0; text-align: right; min-width: 72px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    }
+    .leg-ex-pick .pick { font-weight: 800; color: var(--accent); line-height: 1.2; white-space: nowrap; }
+    .ex-leg-chevron {
+      flex-shrink: 0; color: var(--muted); font-size: 0.62rem;
+      transition: transform 0.2s ease; margin-top: 5px; line-height: 1;
+    }
+    .ex-leg-accordion.open .ex-leg-chevron { transform: rotate(180deg); }
+    .ex-leg-body {
+      max-height: 0; overflow: hidden; transition: max-height 0.28s ease;
+      padding: 0 0 0 2px;
+    }
+    .ex-leg-accordion.open .ex-leg-body {
+      max-height: 1800px; padding-bottom: 8px;
+    }
+    .ex-leg-detail {
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px 12px; font-size: 0.8rem; line-height: 1.38; color: #374151;
+    }
+    .ex-leg-detail-section + .ex-leg-detail-section {
+      margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line);
+    }
+    .ex-leg-detail-label {
+      font-size: 0.72rem; font-weight: 650; letter-spacing: 0;
+      text-transform: none; color: var(--muted); margin-bottom: 5px;
+    }
+    .ex-leg-detail-line + .ex-leg-detail-line { margin-top: 5px; }
+    .ex-leg-detail .prof { margin-bottom: 6px; }
+    .ex-leg-detail .prof:last-child { margin-bottom: 0; }
+    .ex-leg-detail .stat-block { margin-top: 0; }
+    .ex-leg-detail .facts-extra {
+      margin-top: 0; padding-top: 0; border-top: none;
+      grid-template-columns: 1fr;
+    }
+    .ex-blind-body .ai-box { margin-top: 10px; }
+    .facts-extra {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: 12px 16px;
+      font-size: 0.8rem; color: #1f2937;
+      align-items: start;
+    }
+    @media (max-width: 640px) {
+      .facts-extra { grid-template-columns: 1fr; }
+    }
+    .facts-left {
+      display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    }
+    .facts-extra .fr {
+      display: grid; grid-template-columns: 5.2rem 1fr; gap: 8px; align-items: start;
+    }
+    .facts-extra .fl {
+      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--muted); padding-top: 2px;
+    }
+    .ai-box {
+      background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px 12px; min-width: 0;
+    }
+    .ai-box .ai-title {
+      font-size: 0.76rem; font-weight: 650; letter-spacing: 0;
+      text-transform: none; color: var(--muted); margin-bottom: 6px;
+    }
+    .ai-box .ai-line { margin-bottom: 6px; line-height: 1.4; }
+    .ai-box .ai-line:last-child { margin-bottom: 0; }
+    .ai-box .hint-r { color: var(--muted); font-size: 0.75rem; margin-top: 8px; }
+    .form-rows {
+      display: grid;
+      grid-template-columns: max-content auto;
+      column-gap: 10px;
+      row-gap: 8px;
+      align-items: center;
+      justify-content: start;
+    }
+    .form-name { font-weight: 650; white-space: nowrap; }
+    .form-seq { display: flex; gap: 5px; flex-wrap: wrap; }
+    .form-cell {
+      width: 1.7rem; height: 1.7rem; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 800; line-height: 1;
+      border: 1px solid transparent;
+    }
+    .form-cell.W { background: #f3f4f6; color: #374151; border-color: var(--line); }
+    .form-cell.D { background: #f9fafb; color: #6b7280; border-color: var(--line); }
+    .form-cell.L { background: #f3f4f6; color: #6b7280; border-color: var(--line); }
+    .stat-block { margin-top: 2px; }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+    @media (max-width: 520px) {
+      .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .stat-tile {
+      background: #f9fafb;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      min-width: 0;
+    }
+    .stat-lbl {
+      font-size: 0.65rem; font-weight: 800; letter-spacing: 0.02em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .stat-val { font-size: 0.82rem; font-weight: 700; margin-top: 2px; }
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(17, 24, 39, 0.45); padding: 16px;
+      overflow-y: auto; align-items: flex-start; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(720px, 100%); margin: 24px auto 40px;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 12px; padding: 14px 16px 18px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    }
+    .modal-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px; margin-bottom: 12px;
+    }
+    .modal-head h2 { font-size: 1.1rem; font-weight: 800; }
+    .modal-close {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      width: 36px; height: 36px; font-size: 1.2rem; line-height: 1; cursor: pointer;
+    }
+    .modal .block { margin-bottom: 10px; }
+    .btn-take {
+      width: 100%; margin-top: 10px; background: #111827; color: #fff;
+      border-color: #111827;
+    }
+    .btn-take:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel,
+    .btn.btn-cancel {
+      margin-top: 6px; background: none; color: var(--muted); border: none;
+      font-size: 0.74rem; padding: 0; font-weight: 550; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px; min-height: 0;
+    }
+    .btn-cancel:hover,
+    .btn.btn-cancel:hover { color: var(--text); background: none; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px;
+      font-size: 0.86rem; z-index: 2000; opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
+    .stat-pill {
+      display: inline; font-size: 0.72rem; font-weight: 500;
+      padding: 0; margin-left: 6px; background: none; border: none;
+      color: var(--muted);
+    }
+    .stat-pill.win { color: #166534; }
+    .stat-pill.loss { color: #9f1239; }
+    .stat-pill.pending { color: #6b7280; }
+    .stat-summary {
+      display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px;
+      font-size: 0.86rem;
+    }
+    .stat-summary span { font-weight: 650; }
+    .stat-coupon-head {
+      display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+      gap: 4px 10px; margin-bottom: 4px;
+    }
+    .stat-coupon-head-info { flex: 1; min-width: 0; }
+    .stat-coupon-head .sec { margin: 0; font-size: 0.86rem; font-weight: 700; }
+    .stat-coupon-head .meta-line { margin: 0; font-size: 0.74rem; font-weight: 450; }
+    .stat-link {
+      flex-shrink: 0; border: none; background: none; color: var(--muted);
+      cursor: pointer; font: inherit; font-size: 0.72rem; font-weight: 500;
+      padding: 0; white-space: nowrap; line-height: 1.3;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .stat-link:hover { color: var(--text); }
+    .btn-stat-fold, .btn-stat-leg-fold {
+      flex-shrink: 0; border: none; background: none; color: var(--muted);
+      cursor: pointer; font: inherit; font-size: 0.72rem; font-weight: 500;
+      padding: 0; white-space: nowrap; line-height: 1.3;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .btn-stat-fold:hover, .btn-stat-leg-fold:hover { color: var(--text); }
+    .stat-entry.compact .stat-coupon-head { margin-bottom: 6px; }
+    .stat-entry.compact .stat-leg-right,
+    .stat-entry.compact .btn-cancel { display: none; }
+    .stat-entry.compact .stat-leg-grid {
+      grid-template-columns: 1fr;
+      align-items: center;
+      padding: 2px 0;
+    }
+    .stat-entry.compact .stat-leg-left {
+      padding: 2px 0;
+      align-items: center;
+    }
+    .stat-entry.compact .stat-leg-info .teams {
+      font-weight: 400;
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+    .stat-entry.compact .stat-leg-info .meta-line {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin-top: 1px;
+    }
+    .stat-entry.compact .stat-leg-pick {
+      font-size: 0.82rem;
+      font-weight: 750;
+    }
+    .stat-entry.compact .stat-coupon-body { cursor: pointer; }
+    .stat-coupon-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .stat-leg-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+      gap: 4px 10px;
+      padding: 4px 0;
+      border-top: 1px solid #f3f4f6;
+      align-items: start;
+    }
+    .stat-leg-grid:first-child { border-top: none; padding-top: 0; }
+    @media (max-width: 640px) {
+      .stat-leg-grid { grid-template-columns: 1fr; }
+    }
+    .stat-leg-left {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 2px 0; min-width: 0;
+    }
+    .stat-leg-left.win,
+    .stat-leg-left.loss,
+    .stat-leg-left.pending { background: none; }
+    .stat-leg-pick {
+      flex-shrink: 0; min-width: 64px; font-weight: 700; color: var(--accent);
+      font-size: 0.8rem; line-height: 1.25;
+    }
+    .stat-leg-info { flex: 1; min-width: 0; }
+    .stat-leg-info .teams {
+      font-weight: 600; font-size: 0.8rem; color: var(--text);
+      transition: font-weight 0.18s ease, color 0.18s ease, font-size 0.18s ease;
+    }
+    .stat-leg-info .meta-line {
+      font-size: 0.7rem; margin-top: 1px; color: var(--muted);
+      transition: color 0.18s ease, font-size 0.18s ease;
+    }
+    .stat-leg-status {
+      flex-shrink: 0; font-size: 0.78rem; font-weight: 700; line-height: 1;
+      width: auto; text-align: center;
+    }
+    .stat-leg-status.win { color: #047857; }
+    .stat-leg-status.loss { color: #b91c1c; }
+    .stat-leg-status.pending { color: #94a3b8; }
+    .stat-leg-right {
+      padding: 0; font-size: 0.76rem; min-width: 0;
+    }
+    .stat-leg-ai {
+      display: flex; flex-direction: column; gap: 4px; margin: 0 0 3px;
+    }
+    .stat-leg-ai-line {
+      font-size: 0.76rem; line-height: 1.35; font-weight: 450; color: #374151;
+      margin: 0;
+    }
+    .stat-leg-right-foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stat-outcome-mini {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.68rem; color: var(--muted); font-weight: 450;
+    }
+    .stat-outcome-mini .stat-outcome-pill {
+      font-size: 0.68rem; padding: 0; background: none; border: none;
+    }
+    .stat-leg-facts-wrap {
+      margin-top: 4px; padding-top: 4px; border-top: 1px solid #f3f4f6;
+    }
+    .stat-leg-grid.leg-facts-collapsed .stat-leg-facts-wrap { display: none; }
+    .stat-outcome {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+      margin-bottom: 4px; padding-bottom: 0; border-bottom: none;
+    }
+    .stat-outcome-score { font-weight: 650; font-size: 0.78rem; color: var(--text); }
+    .stat-outcome-pill {
+      font-size: 0.68rem; font-weight: 500; text-transform: none;
+      letter-spacing: 0; padding: 0; border-radius: 0;
+      background: none; color: var(--muted); border: none;
+    }
+    .stat-outcome.win .stat-outcome-pill,
+    .stat-outcome-mini.win .stat-outcome-pill { color: #166534; }
+    .stat-outcome.loss .stat-outcome-pill,
+    .stat-outcome-mini.loss .stat-outcome-pill { color: #9f1239; }
+    .stat-outcome.pending .stat-outcome-pill,
+    .stat-outcome-mini.pending .stat-outcome-pill { color: #4b5563; }
+    .stat-leg-wait { font-size: 0.72rem; color: var(--muted); margin-top: 4px; font-weight: 550; }
+    .stat-leg-hint {
+      font-size: 0.76rem; color: #b91c1c; font-weight: 650; margin-bottom: 5px;
+    }
+    .stat-leg-facts .stat-leg-line { margin-bottom: 3px; }
+    .stat-leg-facts .stat-leg-line:last-child { margin-bottom: 0; }
+    .stat-leg-line { color: #1f2937; line-height: 1.38; margin: 0; font-size: 0.82rem; font-weight: 550; }
+    .stat-leg-form { display: flex; flex-direction: column; gap: 4px; }
+    .stat-toolbar {
+      display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+      margin-bottom: 6px;
+    }
+    .stat-cube {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 32px; height: 28px; padding: 0 7px;
+      border: 1px solid var(--line); border-radius: 6px;
+      background: #fff; color: var(--muted);
+      font: inherit; font-size: 0.72rem; font-weight: 650;
+      line-height: 1; cursor: pointer; white-space: nowrap;
+    }
+    .stat-cube:hover { border-color: #9ca3af; color: var(--text); }
+    .stat-cube.on {
+      background: #f3f4f6; color: var(--text); border-color: #9ca3af;
+    }
+    .stat-cube-live {
+      min-width: 96px; padding: 0 12px; justify-content: center; gap: 5px;
+      font-size: 0.74rem; letter-spacing: 0.02em;
+    }
+    .stat-cube-n {
+      margin-left: 3px; font-size: 0.62rem; font-weight: 700; color: var(--muted);
+    }
+    .stat-cube.on .stat-cube-n { color: var(--text); }
+    .stat-odds-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .btn-kf-edit {
+      border: 1px solid var(--line); background: #fff; color: var(--muted); cursor: pointer;
+      font-size: 0.9rem; line-height: 1; padding: 2px 7px; font-weight: 700; border-radius: 6px;
+      min-width: 28px; min-height: 24px;
+    }
+    .btn-kf-edit:hover { color: var(--accent); border-color: #bfdbfe; background: #f8fafc; }
+    .stat-kf-book { font-weight: 700; color: var(--text); }
+    .stat-kf-calc { color: var(--muted); font-size: 0.74rem; font-weight: 550; }
+    .stat-kf-edit {
+      display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    }
+    .stat-kf-edit label { font-size: 0.74rem; color: var(--muted); font-weight: 650; }
+    .stat-kf-input {
+      width: 4.8rem; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px;
+      font: inherit; font-size: 0.82rem; font-weight: 700;
+    }
+    .stat-kf-input:focus { outline: 2px solid #bfdbfe; border-color: var(--accent); }
+    .btn.stat-kf-save, .btn.stat-kf-cancel {
+      padding: 4px 8px; font-size: 0.76rem; min-height: 28px;
+    }
+    .btn.stat-kf-save { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .stat-leg-panel { font-size: 0.82rem; font-weight: 550; }
+    .stat-form-team {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .stat-form-name { font-weight: 650; font-size: 0.8rem; color: var(--text); }
+    .stat-form-seq .form-cell {
+      width: 1.28rem; height: 1.28rem; border-radius: 4px; font-size: 0.68rem;
+    }
+    .stat-form-seq .form-seq { gap: 4px; }
+
+    /* --- Мобильный Safari / телефон --- */
+    @media (max-width: 640px) {
+      .page {
+        padding: max(12px, env(safe-area-inset-top)) 12px max(72px, calc(56px + env(safe-area-inset-bottom)));
+      }
+      header h1 { font-size: 1.15rem; }
+      .mode-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 6px;
+        margin: 8px 0 4px;
+        padding-bottom: 2px;
+      }
+      .mode-tabs::-webkit-scrollbar { display: none; }
+      .mode-tabs [data-view="archive"] {
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+      .mode-tabs .btn {
+        flex: 0 0 auto;
+        min-height: 44px;
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        line-height: 1.15;
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn, .stat-cube, .btn-stat-fold, .btn-stat-leg-fold {
+        min-height: 44px;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .stat-cube { min-height: 40px; }
+      .stat-cube-live { min-width: 0; flex: 1 1 58%; }
+      .stat-toolbar { gap: 8px; }
+      .stat-toolbar .stat-cube:not(.stat-cube-live) { flex: 1 1 38%; }
+      .banner { font-size: 0.8rem; padding: 8px 10px; }
+      .block { padding: 10px 12px; margin-bottom: 10px; }
+      .row {
+        padding: 12px 0;
+        gap: 6px 8px;
+      }
+      .row .teams { font-size: 0.9rem; line-height: 1.3; }
+      .pick { font-size: 0.92rem; }
+      .meta-line { font-size: 0.72rem; }
+      .stat-coupon-head {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+      .btn-stat-fold { align-self: flex-end; min-height: auto; padding: 4px 0; }
+      .stat-leg-left {
+        flex-wrap: wrap;
+        gap: 6px 8px;
+      }
+      .stat-leg-pick { min-width: 58px; font-size: 0.84rem; }
+      .stat-leg-info .teams { font-size: 0.86rem; line-height: 1.3; }
+      .stat-leg-right { margin-top: 2px; }
+      .stat-leg-right-foot {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .btn-stat-leg-fold { min-height: auto; padding: 2px 0; }
+      .stat-leg-grid { padding: 8px 0; gap: 8px; }
+      .ex-blind-toggle { padding: 12px 10px; min-height: 48px; }
+      .ex-leg-toggle { padding: 12px 10px; min-height: 48px; }
+      .facts-extra .fr { grid-template-columns: 4.5rem 1fr; }
+      .why-row { grid-template-columns: 3.6rem 1fr; }
+      .singles-head { gap: 10px; }
+      .btn-custom-express { width: 100%; min-height: 44px; }
+      .custom-pick-bar {
+        padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .custom-pick-actions { width: 100%; }
+      .custom-pick-actions .btn { flex: 1; min-height: 44px; }
+      .toast {
+        bottom: max(16px, env(safe-area-inset-bottom));
+        left: 12px; right: 12px; transform: none;
+        max-width: none; text-align: center;
+      }
+      .modal-backdrop { padding: max(12px, env(safe-area-inset-top)) 10px 12px; }
+      .modal { padding: 12px; border-radius: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>На что ставить</h1>
+    </header>
+
+    <div class="mode-tabs" id="viewTabs">
+      <button class="btn on" type="button" data-view="a">Одинары A</button>
+      <button class="btn" type="button" data-view="express">Экспрессы</button>
+      <button class="btn" type="button" data-view="stats" id="viewTabStats">В работе</button>
+      <button class="btn" type="button" data-view="archive">Dev</button>
+    </div>
+
+    <div id="banner"></div>
+    <div id="content" class="hint">Загрузка…</div>
+    <div id="toast" class="toast" role="status"></div>
+  </div>
+
+  <script>
+    const contentEl = document.getElementById("content");
+    const bannerEl = document.getElementById("banner");
+
+    let board = {};
+    let sportTab = "football";
+    let openKey = null;
+    let viewMode = loadViewMode(); // a | express | stats | archive
+    let statsSubView = loadStatsSubView(); // active | archive
+    let editingOddsId = null;
+    let customPickMode = false;
+    let customPicks = new Set();
+
+    const EXPRESS_HISTORY_KEY = "express-agent-history-v1";
+    const VIEW_MODE_KEY = "express-agent-view-v1";
+    const STATS_SUBVIEW_KEY = "express-agent-stats-sub-v1";
+    const EXPRESS_TAKEN_MARKS_KEY = "express-agent-taken-marks-v1";
+    const LEVEL_LABEL = { safe: "Уверенный", medium: "Средний", risky: "Рискованный", custom: "Свой экспресс" };
+
+    let expressReplacing = null;
+    let expressOpenLevels = new Set();
+    let expressOpenLegs = new Set();
+    let statScoresOpen = new Set();
+    let statLegFactsOpen = new Set();
+    let expressTakenMarks = loadExpressTakenMarks();
+    let expressReplaceConfirm = null;
+
+    function loadExpressTakenMarks() {
+      try {
+        const raw = sessionStorage.getItem(EXPRESS_TAKEN_MARKS_KEY);
+        return new Set(raw ? JSON.parse(raw) : []);
+      } catch {
+        return new Set();
+      }
+    }
+
+    function saveExpressTakenMarks() {
+      try {
+        sessionStorage.setItem(EXPRESS_TAKEN_MARKS_KEY, JSON.stringify([...expressTakenMarks]));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function markExpressTaken(level) {
+      expressTakenMarks.add(level);
+      saveExpressTakenMarks();
+    }
+
+    function clearExpressTakenMark(level) {
+      expressTakenMarks.delete(level);
+      saveExpressTakenMarks();
+    }
+
+    function isExpressTaken(level) {
+      return expressTakenMarks.has(level);
+    }
+
+    function saveViewMode(mode) {
+      try {
+        localStorage.setItem(VIEW_MODE_KEY, mode);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function loadViewMode() {
+      try {
+        const m = localStorage.getItem(VIEW_MODE_KEY);
+        return ["a", "express", "stats", "archive"].includes(m) ? m : "a";
+      } catch {
+        return "a";
+      }
+    }
+
+    function loadStatsSubView() {
+      try {
+        const m = localStorage.getItem(STATS_SUBVIEW_KEY);
+        return m === "archive" ? "archive" : "active";
+      } catch {
+        return "active";
+      }
+    }
+
+    function saveStatsSubView(mode) {
+      try {
+        localStorage.setItem(STATS_SUBVIEW_KEY, mode);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function shortTeamLabel(name) {
+      const s = String(name || "").trim();
+      if (!s) return "команда";
+      if (s.length <= 20) return s;
+      return `${s.slice(0, 18)}…`;
+    }
+
+    function expressHistoryStats(items) {
+      const list = items || [];
+      const pending = list.filter((e) => e.result === "pending").length;
+      const wins = list.filter((e) => e.result === "win").length;
+      const losses = list.filter((e) => e.result === "loss").length;
+      return { pending, wins, losses, done: wins + losses };
+    }
+
+    function displayExpressOdds(e) {
+      const calc = Number(e.totalOdds || 0);
+      const book = Number(e.bookOdds);
+      const hasBook = Number.isFinite(book) && book > 1;
+      return {
+        calc,
+        book: hasBook ? book : null,
+        show: hasBook ? book : calc,
+        isBook: hasBook,
+      };
+    }
+
+    function matchPickKey(home, away) {
+      return `${String(home || "").trim()}|${String(away || "").trim()}`;
+    }
+
+    function getSelectedCustomLegs() {
+      const singles = Object.values(board.singlesBySport || {}).flat();
+      return singles
+        .filter((m) => customPicks.has(matchPickKey(m.home, m.away)) && m.aiPick)
+        .map((m) => ({
+          home: m.home,
+          away: m.away,
+          pick: m.aiPick.label,
+          odds: m.aiPick.odds,
+          kickoff: m.kickoff,
+          league: m.league,
+          result: null,
+        }));
+    }
+
+    function calcLegsOdds(legs) {
+      const kf = (legs || []).reduce((p, l) => p * (Number(l.odds) || 1.4), 1);
+      return Math.round(kf * 100) / 100;
+    }
+
+    function buildCustomExpressAi(legs) {
+      const lines = [];
+      for (const leg of legs) {
+        const row = findSingleRow(leg);
+        const facts = row ? collectAiLines(row).slice(0, 2) : [];
+        const pick = shortLabel(leg.pick);
+        const shortHome = leg.home?.split(" ").slice(0, 2).join(" ") || leg.home;
+        if (facts.length) {
+          lines.push(`${shortHome} (${pick}): ${facts.join(" ")}`);
+        } else {
+          lines.push(`${shortHome}: ${compactAiLine(row, leg)}`);
+        }
+      }
+
+      const kf = calcLegsOdds(legs);
+      lines.push(`Итог: твой выбор — ${legs.length} ног, кф ×${kf.toFixed(2)}.`);
+
+      const weak = legs.filter((l) => {
+        const row = findSingleRow(l);
+        return !row?.profilePick?.main?.reason;
+      }).length;
+      if (weak > 0) {
+        lines.push(`Подсказка: у ${weak} из ${legs.length} мало фактов — перепроверь ставку вручную.`);
+      }
+      if (legs.length >= 5) {
+        lines.push("Подсказка: при 5+ ногах хватает одного сбоя — весь купон не зайдёт.");
+      }
+      const sameDay = new Set(
+        legs.map((l) => (l.kickoff ? String(l.kickoff).slice(0, 10) : "")),
+      );
+      if (sameDay.size === 1 && legs.length >= 3) {
+        lines.push("Подсказка: все матчи в один день — удобно следить, но риск выше из‑за корреляции лиг.");
+      }
+
+      return {
+        aiTitle: "ИИ · твой экспресс",
+        aiReasoning: lines.slice(0, 8),
+      };
+    }
+
+    function toggleCustomPickMode(force) {
+      customPickMode = typeof force === "boolean" ? force : !customPickMode;
+      if (!customPickMode) customPicks = new Set();
+      openKey = null;
+      document.body.classList.toggle("custom-pick-open", customPickMode && viewMode === "a");
+      render();
+    }
+
+    function confirmCustomExpress() {
+      const legs = getSelectedCustomLegs();
+      if (legs.length < 2) {
+        showToast("Выбери минимум 2 матча");
+        return;
+      }
+      const totalOdds = calcLegsOdds(legs);
+      const ai = buildCustomExpressAi(legs);
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        takenAt: new Date().toISOString(),
+        level: "custom",
+        title: "Свой экспресс",
+        totalOdds,
+        aiTitle: ai.aiTitle,
+        aiReasoning: ai.aiReasoning,
+        legs,
+        result: "pending",
+        custom: true,
+      };
+      const history = loadExpressHistory();
+      saveExpressHistory([entry, ...history]);
+      expressHistoryCache = loadExpressHistory();
+      customPickMode = false;
+      customPicks = new Set();
+      document.body.classList.remove("custom-pick-open");
+      viewMode = "stats";
+      statsSubView = "active";
+      saveViewMode("stats");
+      saveStatsSubView("active");
+      showToast("Свой экспресс в статистике");
+      render();
+    }
+
+    function saveExpressBookOdds(id, raw) {
+      const history = loadExpressHistory();
+      const entry = history.find((e) => e.id === id);
+      if (!entry) return false;
+      const val = parseFloat(String(raw || "").trim().replace(",", "."));
+      if (!Number.isFinite(val) || val <= 1) {
+        showToast("Введи число больше 1");
+        return false;
+      }
+      entry.bookOdds = Math.round(val * 100) / 100;
+      saveExpressHistory(history);
+      expressHistoryCache = history;
+      editingOddsId = null;
+      showToast(`КФ сохранён: ×${entry.bookOdds.toFixed(2)}`);
+      return true;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function loadExpressHistory() {
+      try {
+        const raw = localStorage.getItem(EXPRESS_HISTORY_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return repairExpressHistory(list, { persist: true });
+      } catch {
+        return [];
+      }
+    }
+
+    const LEG_START_GRACE_MS = 5 * 60_000;
+
+    function legKickoffMs(leg) {
+      if (!leg?.kickoff) return null;
+      const t = new Date(leg.kickoff).getTime();
+      return Number.isFinite(t) ? t : null;
+    }
+
+    /** Матч ещё не должен был начаться — исход рано показывать. */
+    function isLegAwaitingKickoff(leg) {
+      const kick = legKickoffMs(leg);
+      if (kick == null) return false;
+      return kick > Date.now() - LEG_START_GRACE_MS;
+    }
+
+    function legForDisplay(leg) {
+      if (!isLegAwaitingKickoff(leg)) return leg;
+      if (!leg.result && !leg.score) return leg;
+      const { result, score, ...rest } = leg;
+      return rest;
+    }
+
+    function repairExpressEntry(e) {
+      if (!e?.legs?.length) return e;
+      const legs = e.legs.map(legForDisplay);
+      const legsChanged = legs.some(
+        (l, i) => l.result !== e.legs[i]?.result || l.score !== e.legs[i]?.score,
+      );
+      if (!legsChanged) return e;
+      const allSettled =
+        legs.length > 0 && legs.every((l) => l.result === "win" || l.result === "loss");
+      if (e.result === "pending" || !allSettled) {
+        return { ...e, legs, result: "pending", settledAt: null };
+      }
+      return { ...e, legs };
+    }
+
+    function repairExpressHistory(history, { persist = false } = {}) {
+      const src = history || [];
+      const next = src.map(repairExpressEntry);
+      const changed = next.some((e, i) => JSON.stringify(e) !== JSON.stringify(src[i]));
+      if (changed && persist) saveExpressHistory(next);
+      return next;
+    }
+
+    function saveExpressHistory(items) {
+      localStorage.setItem(EXPRESS_HISTORY_KEY, JSON.stringify(items.slice(0, 80)));
+    }
+
+    function legsKey(legs) {
+      return (legs || [])
+        .map((l) => `${l.home}|${l.away}|${l.pick}`)
+        .sort()
+        .join(";");
+    }
+
+    function collectExcludeKeys() {
+      const keys = new Set();
+      for (const ex of loadExpressHistory()) {
+        if (ex.result !== "pending") continue;
+        for (const l of ex.legs || []) {
+          keys.add(matchPickKey(l.home, l.away));
+        }
+      }
+      return [...keys];
+    }
+
+    /** При замене — только pending из статистики; другие купоны на экране не блокируем. */
+    function collectExpressReplaceExcludeKeys(_currentLevel) {
+      return collectExcludeKeys();
+    }
+
+    function expressLegsKeyFromCoupon(coupon) {
+      return legsKey(
+        (coupon?.matches || []).map((l) => ({
+          home: l.home,
+          away: l.away,
+          pick: l.pick,
+        })),
+      );
+    }
+
+    function expressRefreshIcon() {
+      return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 4V1L8 5l4 4V6c3.3 0 6 2.7 6 6 0 1-.3 2-.8 2.8l1.5 1.1C19.4 14.5 20 13.3 20 12c0-4.4-3.6-8-8-8z" fill="currentColor"/>
+        <path d="M12 18v3l4-4-4-4v3c-3.3 0-6-2.7-6-6 0-1 .3-2 .8-2.8L5.3 7.1C4.6 8.5 4 9.7 4 12c0 4.4 3.6 8 8 8z" fill="currentColor" opacity="0.55"/>
+      </svg>`;
+    }
+
+    async function settleExpressHistory() {
+      const history = loadExpressHistory();
+      const pending = history.filter((e) => e.result === "pending");
+      if (!pending.length) return history;
+      try {
+        const res = await fetch("/api/express/settle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expresses: pending }),
+        });
+        if (!res.ok) return history;
+        const data = await res.json();
+        if (!data.expresses) return history;
+        const settledMap = new Map(data.expresses.map((e) => [e.id, e]));
+        const next = history.map((e) => {
+          const settled = settledMap.get(e.id);
+          if (!settled) return e;
+          return { ...e, ...settled, bookOdds: e.bookOdds ?? settled.bookOdds };
+        });
+        const repaired = repairExpressHistory(next, { persist: true });
+        return repaired;
+      } catch {
+        return history;
+      }
+    }
+
+    function cancelExpress(id) {
+      const history = loadExpressHistory();
+      const entry = history.find((e) => e.id === id);
+      if (!entry || entry.result !== "pending") return;
+      const next = history.filter((e) => e.id !== id);
+      saveExpressHistory(next);
+      expressHistoryCache = next;
+      showToast("Купон отменён");
+      render();
+    }
+
+    async function takeExpress(level) {
+      const coupon = board.capperExpresses?.[level];
+      if (!coupon?.matches?.length || isExpressTaken(level)) return;
+
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        takenAt: new Date().toISOString(),
+        level,
+        title: coupon.title || LEVEL_LABEL[level],
+        totalOdds: coupon.total_odds,
+        aiTitle: coupon.aiTitle,
+        aiReasoning: coupon.aiReasoning || [],
+        legs: coupon.matches.map((l) => ({
+          home: l.home,
+          away: l.away,
+          pick: l.pick,
+          odds: l.odds,
+          kickoff: l.kickoff,
+          league: l.league,
+          result: null,
+        })),
+        result: "pending",
+      };
+
+      const history = loadExpressHistory();
+      const dup = history.find(
+        (e) => e.result === "pending" && legsKey(e.legs) === legsKey(entry.legs),
+      );
+      if (!dup) {
+        saveExpressHistory([entry, ...history]);
+        expressHistoryCache = loadExpressHistory();
+      }
+
+      markExpressTaken(level);
+      showToast("Купон в статистике");
+      if (viewMode === "express") await render({ skipSettle: true });
+
+      const excludeKeys = collectExcludeKeys();
+      try {
+        const res = await fetch("/api/express/take", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level, excludeKeys }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.ok && data.coupon) {
+          if (!board.capperExpresses) board.capperExpresses = {};
+          board.capperExpresses[level] = data.coupon;
+        }
+      } catch (e) {
+        console.warn("take express:", e);
+      }
+
+      if (viewMode === "express") await render({ skipSettle: true });
+    }
+
+    async function fetchExpressReplace(level, excludeKeys, mustChangeKeys) {
+      const payload = {
+        level,
+        excludeKeys,
+        mustChangeKeys,
+        replaceSeed: Date.now(),
+      };
+      let res = await fetch("/api/express/replace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 404) {
+        res = await fetch("/api/express/take", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+      return res;
+    }
+
+    async function replaceExpress(level, confirmed = false) {
+      const coupon = board.capperExpresses?.[level];
+      if (!coupon?.matches?.length || expressReplacing) return;
+
+      const title = coupon.title || LEVEL_LABEL[level] || "экспресс";
+      if (!confirmed) {
+        expressReplaceConfirm = level;
+        if (viewMode === "express") await render({ skipSettle: true });
+        return;
+      }
+
+      const prevKeys = new Set(
+        (coupon.matches || []).map((m) => matchPickKey(m.home, m.away)),
+      );
+      const mustChangeKeys = [...prevKeys];
+      const excludeKeys = collectExpressReplaceExcludeKeys(level);
+      expressReplacing = level;
+      expressReplaceConfirm = null;
+      render({ skipSettle: true });
+
+      try {
+        let data = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const res = await fetchExpressReplace(level, excludeKeys, mustChangeKeys);
+          if (!res.ok) {
+            if (res.status === 404) {
+              showToast("Сервер старой версии — закрой окно «Экспресс-агент» и запусти start.bat");
+            } else {
+              showToast(`Ошибка ${res.status} — перезапусти start.bat`);
+            }
+            return;
+          }
+          try {
+            data = await res.json();
+          } catch {
+            showToast("Ошибка ответа сервера");
+            return;
+          }
+          if (!data.ok || !data.coupon?.matches?.length) break;
+          const nextKeys = new Set(
+            data.coupon.matches.map((m) => matchPickKey(m.home, m.away)),
+          );
+          const same =
+            nextKeys.size === prevKeys.size &&
+            [...nextKeys].every((k) => prevKeys.has(k));
+          if (!same || attempt === 1) break;
+        }
+        if (data?.ok && data.coupon?.matches?.length) {
+          const nextKeys = new Set(
+            data.coupon.matches.map((m) => matchPickKey(m.home, m.away)),
+          );
+          const same =
+            nextKeys.size === prevKeys.size &&
+            [...nextKeys].every((k) => prevKeys.has(k));
+          if (!board.capperExpresses) board.capperExpresses = {};
+          board.capperExpresses[level] = data.coupon;
+          for (const k of [...expressOpenLegs]) {
+            if (k.startsWith(`${level}|`)) expressOpenLegs.delete(k);
+          }
+          clearExpressTakenMark(level);
+          if (data.partial) {
+            showToast("Новый состав — часть матчей совпадает с другими купонами");
+          } else {
+            showToast(same ? "Других матчей A не нашлось" : "Экспресс заменён");
+          }
+        } else {
+          showToast(data?.error || "Не хватает A для другого купона");
+        }
+      } catch (e) {
+        console.warn("replace express:", e);
+        showToast("Ошибка замены");
+      } finally {
+        expressReplacing = null;
+        if (viewMode === "express") await render({ skipSettle: true });
+      }
+    }
+
+    const SPORT_TABS = [
+      { id: "football", label: "Футбол" },
+      { id: "tennis", label: "Теннис" },
+      { id: "hockey", label: "Хоккей" },
+      { id: "basketball", label: "Баскетбол" },
+    ];
+
+    function shortLabel(label) {
+      if (!label) return "—";
+      return String(label).replace(/\s*\([^)]*\)\s*/g, "").trim();
+    }
+
+    function formatKickoff(iso) {
+      if (!iso) return "время —";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "время —";
+      const msk = new Date(d.getTime() + 3 * 3600_000);
+      const dd = String(msk.getUTCDate()).padStart(2, "0");
+      const mm = String(msk.getUTCMonth() + 1).padStart(2, "0");
+      const yyyy = msk.getUTCFullYear();
+      const hh = String(msk.getUTCHours()).padStart(2, "0");
+      const mi = String(msk.getUTCMinutes()).padStart(2, "0");
+      return `${dd}.${mm}.${yyyy} · ${hh}:${mi} МСК`;
+    }
+
+    function escapeHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function showBanner(text, isErr) {
+      if (!text) { bannerEl.innerHTML = ""; return; }
+      bannerEl.innerHTML = `<div class="banner${isErr ? " err" : ""}">${escapeHtml(text)}</div>`;
+    }
+
+    function formatAlt(a) {
+      const lab = shortLabel(a.label);
+      if (!lab) return "";
+      const odd = a.odds != null && Number(a.odds) > 1 ? ` ~@${Number(a.odds).toFixed(2)}` : "";
+      if (a.kind === "combo") return `${lab}${odd}`;
+      return lab + odd;
+    }
+
+    function chip(label, cell) {
+      const hi = cell && cell.pct >= 70 ? " hi" : "";
+      return `<span class="chip${hi}">${escapeHtml(label)} ${escapeHtml(cell?.label || "—")}</span>`;
+    }
+
+    function renderFormSeq(form) {
+      const list = Array.isArray(form) ? form : [];
+      if (!list.length) return `<span class="hint-r">нет</span>`;
+      const ru = { W: "В", D: "Н", L: "П" };
+      return `<span class="form-seq">${list
+        .map((c) => `<span class="form-cell ${c}" title="${c === "W" ? "победа" : c === "L" ? "поражение" : "ничья"}">${ru[c] || "?"}</span>`)
+        .join("")}</span>`;
+    }
+
+    function renderProfileCol(p) {
+      if (!p?.betTable) return `<div class="prof"><div class="pn">Нет истории</div></div>`;
+      const t = p.betTable;
+      const s = p.summary || {};
+      return `<div class="prof">
+        <div class="pn">${escapeHtml(p.name)} · ${s.avgIT ?? "—"}/${s.avgITOpp ?? "—"} · ср.Т ${s.avgT ?? "—"}</div>
+        <div class="chips">
+          ${chip("ИТБ 1.5", t.itb15 || t.itb05)}
+          ${chip("ОЗ", t.btts)}
+          ${chip("ТБ 2.5", t.over25)}
+          ${chip("Победы", t.win)}
+        </div>
+      </div>`;
+    }
+
+    function renderWhyBlock(m) {
+      const pp = m.profilePick;
+      if (pp?.main) {
+        const extras = pp.extras || [];
+        if (!extras.length) return "";
+        const html = extras
+          .map((ex, i) => {
+            const odd =
+              ex.odds != null && Number(ex.odds) > 1
+                ? ` ${Number(ex.odds).toFixed(2)}`
+                : "";
+            return `<div class="why-row">
+              <div class="tag">Доп.${i + 1}</div>
+              <div class="body"><strong>${escapeHtml(ex.label || "")}${odd}</strong>
+                <span class="hint-r"> — ${escapeHtml(ex.reason || "")}</span></div>
+            </div>`;
+          })
+          .join("");
+        return `<div class="why-list">${html}</div>`;
+      }
+      const comment = escapeHtml(m.comment || "Мало фактов.");
+      return `<div class="why-list"><div class="why-row"><div class="tag">Инфо</div><div class="body">${comment}</div></div></div>`;
+    }
+
+    function ruMatches(n) {
+      const k = Math.abs(n) % 100;
+      const k1 = k % 10;
+      if (k > 10 && k < 20) return `${n} матчей`;
+      if (k1 === 1) return `${n} матч`;
+      if (k1 >= 2 && k1 <= 4) return `${n} матча`;
+      return `${n} матчей`;
+    }
+
+    function ruWins(n) {
+      const k = Math.abs(n) % 100;
+      const k1 = k % 10;
+      if (k > 10 && k < 20) return `${n} побед`;
+      if (k1 === 1) return `${n} победа`;
+      if (k1 >= 2 && k1 <= 4) return `${n} победы`;
+      return `${n} побед`;
+    }
+
+    function h2hPeriod(scopeLabel) {
+      const s = String(scopeLabel || "");
+      if (/мало/i.test(s)) return { when: "за последний год", sparse: true };
+      if (/12|год/i.test(s)) return { when: "за последний год", sparse: false };
+      if (/всё|все/i.test(s)) return { when: "за всё время в базе", sparse: false };
+      return { when: s || "в очных", sparse: false };
+    }
+
+    /** Короткие фразы про очные — в блок ИИ, не отдельной строкой слева. */
+    function h2hAiLines(m, h) {
+      if (!h || !(h.n > 0)) return [];
+      const home = m.homeProfile?.name || m.home || "хозяева";
+      const away = m.awayProfile?.name || m.away || "гости";
+      const n = Number(h.n) || 0;
+      const hw = Number(h.homeWins) || 0;
+      const aw = Number(h.awayWins) || 0;
+      const dr = Number(h.draws) || 0;
+      const scores = (h.scores || []).filter(Boolean);
+      const { when } = h2hPeriod(h.scopeLabel);
+      const lines = [];
+
+      if (n === 1 && scores.length === 1) {
+        const sc = scores[0];
+        if (hw === 1) lines.push(`${when.charAt(0).toUpperCase()}${when.slice(1)} играли один раз — победа «${home}» ${sc}.`);
+        else if (aw === 1) lines.push(`${when.charAt(0).toUpperCase()}${when.slice(1)} играли один раз — победа «${away}» ${sc}.`);
+        else lines.push(`${when.charAt(0).toUpperCase()}${when.slice(1)} играли один раз — ничья ${sc}.`);
+      } else if (n === 1) {
+        lines.push(`${when.charAt(0).toUpperCase()}${when.slice(1)} в базе только ${ruMatches(1)}.`);
+      } else {
+        lines.push(
+          `${when.charAt(0).toUpperCase()}${when.slice(1)} сыграли ${ruMatches(n)}: у «${home}» ${ruWins(hw)}, у «${away}» ${ruWins(aw)}, ничьих ${dr}.`,
+        );
+        if (scores.length) lines.push(`Счета последних встреч: ${scores.join(", ")}.`);
+      }
+
+      if (n >= 3) {
+        if (h.leanSide === "П1" && hw > aw) {
+          lines.push(`По личным встречам чаще сильнее «${home}».`);
+        } else if (h.leanSide === "П2" && aw > hw) {
+          lines.push(`По личным встречам чаще сильнее «${away}».`);
+        }
+      }
+
+      return lines;
+    }
+
+    function fmtPair(a, b, digits = 2) {
+      const left = a != null && Number.isFinite(Number(a)) ? Number(a).toFixed(digits) : null;
+      const right = b != null && Number.isFinite(Number(b)) ? Number(b).toFixed(digits) : null;
+      if (left == null && right == null) return null;
+      return `${left ?? "—"} / ${right ?? "—"}`;
+    }
+
+    /** Слева под формой: голы + сетка углы/карточки/фолы. */
+    function renderExtraStatRows(m) {
+      const rows = [];
+      const tiles = [];
+
+      const xgPair = fmtPair(m.xg?.homeAvg, m.xg?.awayAvg);
+      if (xgPair) {
+        rows.push({ label: "xG", value: xgPair });
+      } else {
+        const eg = m.expectedGoals;
+        const egPair = fmtPair(eg?.home, eg?.away);
+        if (egPair) {
+          rows.push({ label: "Ожид. голы", value: egPair });
+        } else {
+          const avgPair = fmtPair(
+            m.homeProfile?.summary?.avgIT,
+            m.awayProfile?.summary?.avgIT,
+          );
+          if (avgPair) rows.push({ label: "Ср. голы", value: avgPair });
+        }
+      }
+
+      const st = m.extraStats || {};
+      const addTile = (label, pair, digits = 1) => {
+        const v = fmtPair(pair?.home, pair?.away, digits);
+        if (v) tiles.push({ label, value: v });
+      };
+
+      addTile("Углы", st.corners);
+      addTile("Жёлтые", st.yellowCards);
+      addTile("Красные", st.redCards);
+      addTile("Фолы", st.fouls);
+      addTile("Офсайды", st.offsides ?? st.avgOffsides);
+
+      if (m.motivation?.text) {
+        rows.push({ label: "Мотив", value: m.motivation.text });
+      }
+
+      if (!rows.length && !tiles.length) return "";
+
+      const top = rows
+        .map(
+          (r) =>
+            `<div class="fr"><div class="fl">${escapeHtml(r.label)}</div><div class="body">${escapeHtml(r.value)}</div></div>`,
+        )
+        .join("");
+
+      const grid = tiles.length
+        ? `<div class="stat-grid">${tiles
+            .map(
+              (t) =>
+                `<div class="stat-tile"><div class="stat-lbl">${escapeHtml(t.label)}</div><div class="stat-val">${escapeHtml(t.value)}</div></div>`,
+            )
+            .join("")}</div>`
+        : "";
+
+      return `<div class="stat-block">${top}${grid}</div>`;
+    }
+
+    /** Тексты для блока «ИИ» справа — без дубля основного пика и «Доп.N». */
+    function collectAiLines(m) {
+      const out = [];
+      const skip = new Set(
+        (m.profilePick?.extras || []).map((e) => String(e.reason || "").trim()).filter(Boolean),
+      );
+      if (m.motivation?.text) skip.add(String(m.motivation.text).trim());
+      const push = (s) => {
+        const t = String(s || "").replace(/\s+/g, " ").trim();
+        if (!t || out.includes(t) || skip.has(t)) return;
+        if (/^\d+\.\s*(основн|доп)/i.test(t)) return;
+        out.push(t);
+      };
+      if (m.profilePick?.main?.reason) push(m.profilePick.main.reason);
+      for (const line of m.profilePick?.why || []) push(line);
+      if (m.comment) {
+        for (const line of String(m.comment).split(/\n+/)) push(line);
+      }
+      for (const f of m.fourscoreFacts || []) push(f);
+      const fa = m.awayProfile?.form || [];
+      const fh = m.homeProfile?.form || [];
+      if (fa.length >= 4 && fa.every((x) => x === "L")) {
+        push(`У «${m.awayProfile?.name || m.away}» сейчас тяжёлая серия — ${fa.length} поражений подряд.`);
+      }
+      if (fh.length >= 4 && fh.every((x) => x === "W")) {
+        push(`У «${m.homeProfile?.name || m.home}» серия из ${fh.length} побед.`);
+      }
+      const h = m.h2hSlim || (m.h2h?.n > 0 ? m.h2h : null);
+      for (const line of h2hAiLines(m, h)) push(line);
+      return out.slice(0, 6);
+    }
+
+    function renderAiBox(m) {
+      const lines = collectAiLines(m);
+      const pick = m.aiPick?.label ? shortLabel(m.aiPick.label) : "";
+      const body = lines.length
+        ? lines.map((t) => `<div class="ai-line">${escapeHtml(t)}</div>`).join("")
+        : `<div class="ai-line">Пока мало отдельных фактов — смотри чипы и форму выше.</div>`;
+      return `<div class="ai-box">
+        <div class="ai-title">ИИ${pick ? ` · почему ${escapeHtml(pick)}` : ""}</div>
+        ${body}
+      </div>`;
+    }
+
+    /** Только Одинары A: слева форма + xG/офсайды/углы/мотив, справа ИИ (с очными). */
+    function renderMatchFacts(m, { archive = false } = {}) {
+      if (archive) return "";
+      const rows = [];
+      const fh = m.homeProfile?.form || [];
+      const fa = m.awayProfile?.form || [];
+      if (fh.length || fa.length) {
+        const home = escapeHtml(m.homeProfile?.name || m.home || "Хоз.");
+        const away = escapeHtml(m.awayProfile?.name || m.away || "Гост.");
+        rows.push(`<div class="fr"><div class="fl">Форма</div><div class="body">
+          <div class="form-rows">
+            <span class="form-name">${home}</span>${renderFormSeq(fh)}
+            <span class="form-name">${away}</span>${renderFormSeq(fa)}
+          </div>
+        </div></div>`);
+      }
+      rows.push(renderExtraStatRows(m));
+      const left = `<div class="facts-left">${rows.join("")}</div>`;
+      return `<div class="facts-extra">${left}${renderAiBox(m)}</div>`;
+    }
+
+    function renderSingles(list, sportLabel, { archive = false } = {}) {
+      if (!list?.length) {
+        return `<div class="block"><div class="hint">${archive ? "Нет матчей B/C" : "Нет одинаров A"}: ${sportLabel}.</div></div>`;
+      }
+      const pickMode = customPickMode && viewMode === "a" && !archive;
+      const rows = list.map((m, idx) => {
+        const r = m.aiPick;
+        if (!r) return "";
+        const key = `${viewMode}:${sportTab}:${idx}`;
+        const pickKey = matchPickKey(m.home, m.away);
+        const picked = pickMode && customPicks.has(pickKey);
+        const tier = r.tier || (archive ? "B" : "A");
+        const league = m.league || "лига —";
+        const when = formatKickoff(m.kickoff);
+        const open = !pickMode && openKey === key ? " open" : "";
+        const hasProfile = Boolean(m.homeProfile || m.awayProfile || m.profilePick?.main);
+
+        let extraLines = "";
+        if (archive) {
+          const why = m.archiveReason || m.debug?.source || "—";
+          const dbg = m.debug
+            ? `src=${m.debug.source || "—"} · профиль=${m.debug.hasProfile ? "да" : "нет"} · model=${m.debug.modelOk ? "да" : "нет"}`
+            : "";
+          extraLines += `<div class="alts">${escapeHtml(why)}</div>`;
+          if (dbg) extraLines += `<div class="alts">${escapeHtml(dbg)}</div>`;
+        } else if (!hasProfile) {
+          const combo = m.combo || (m.alts || []).find((a) => a.kind === "combo");
+          const otherAlts = (m.alts || [])
+            .filter((a) => a.kind !== "combo" && (!combo || a.label !== combo.label))
+            .map(formatAlt)
+            .filter(Boolean)
+            .join(" · ");
+          if (combo) extraLines += `<div class="alts">${escapeHtml(formatAlt({ ...combo, kind: "combo" }))}</div>`;
+          if (otherAlts) extraLines += `<div class="alts">${escapeHtml(otherAlts)}</div>`;
+        }
+
+        const profiles =
+          m.homeProfile || m.awayProfile
+            ? `<div class="profiles">${renderProfileCol(m.homeProfile)}${renderProfileCol(m.awayProfile)}</div>`
+            : "";
+
+        const rightBadge = pickMode
+          ? `<span class="custom-pick-badge${picked ? " on" : ""}">${picked ? "✓" : "+"}</span>`
+          : `<span class="tier ${tier}">${tier}</span>`;
+
+        return `<div class="row${open}${picked ? " custom-picked" : ""}${pickMode ? " pick-mode" : ""}" data-single="${key}" data-match-pick="${escapeHtml(pickKey)}">
+          <div style="flex:1;min-width:0">
+            <div class="pick">${shortLabel(r.label)}${r.odds ? ` · ${Number(r.odds).toFixed(2)}` : ""}</div>
+            <div class="teams">${escapeHtml(m.home)} — ${escapeHtml(m.away)}</div>
+            <div class="meta-line">${escapeHtml(league)} · ${when}</div>
+            ${extraLines}
+            <div class="detail">${profiles}${renderWhyBlock(m)}${renderMatchFacts(m, { archive })}</div>
+          </div>
+          ${rightBadge}
+        </div>`;
+      }).filter(Boolean).join("");
+      return `<div class="block"><div class="sec">${sportLabel} · ${list.length}</div>${rows}</div>`;
+    }
+
+    function sportsWithData(by) {
+      return SPORT_TABS.filter((t) => (by[t.id] || []).length > 0);
+    }
+
+    function expressLegKey(level, leg) {
+      return `${level}|${matchPickKey(leg.home, leg.away)}`;
+    }
+
+    function renderExpressLegDetail(leg) {
+      const row = findSingleRow(leg);
+      const sections = [];
+
+      const pushSection = (label, html) => {
+        const body = String(html || "").trim();
+        if (!body) return;
+        sections.push(`<div class="ex-leg-detail-section">
+          ${label ? `<div class="ex-leg-detail-label">${escapeHtml(label)}</div>` : ""}
+          ${body}
+        </div>`);
+      };
+
+      if (!row) {
+        if (leg.reason) {
+          pushSection("Сигнал", `<div class="ex-leg-detail-line">${escapeHtml(leg.reason)}</div>`);
+        }
+        return sections.length
+          ? `<div class="ex-leg-detail">${sections.join("")}</div>`
+          : `<div class="ex-leg-detail"><div class="hint-r" style="margin:0">Данные матча подтянутся после обновления ленты.</div></div>`;
+      }
+
+      const mainReason = row.profilePick?.main?.reason || leg.reason;
+      if (mainReason) {
+        pushSection(
+          "Основной сигнал",
+          `<div class="ex-leg-detail-line">${escapeHtml(mainReason)}</div>`,
+        );
+      }
+
+      const formHtml = renderStatFormBlock(
+        row.homeProfile?.name || leg.home,
+        row.homeProfile?.form,
+        row.awayProfile?.name || leg.away,
+        row.awayProfile?.form,
+      );
+      pushSection("Форма", formHtml);
+
+      if (row.homeProfile || row.awayProfile) {
+        pushSection(
+          "Атака и ставки",
+          `<div class="profiles" style="margin:0">${renderProfileCol(row.homeProfile)}${renderProfileCol(row.awayProfile)}</div>`,
+        );
+      }
+
+      const extraStats = renderExtraStatRows(row);
+      pushSection("LIVE Архив", extraStats);
+
+      const aiLines = collectAiLines(row).slice(0, 5);
+      if (aiLines.length) {
+        pushSection(
+          "ИИ · факты",
+          aiLines.map((t) => `<div class="ex-leg-detail-line">${escapeHtml(t)}</div>`).join(""),
+        );
+      }
+
+      const h = row.h2hSlim || row.h2h;
+      const h2hLines = h2hAiLines(row, h);
+      if (h2hLines.length) {
+        pushSection(
+          "Очные",
+          h2hLines.map((t) => `<div class="ex-leg-detail-line">${escapeHtml(t)}</div>`).join(""),
+        );
+      }
+
+      const extras = row.profilePick?.extras || [];
+      if (extras.length) {
+        const extrasHtml = extras
+          .slice(0, 2)
+          .map((ex) => {
+            const odd = ex.odds != null && Number(ex.odds) > 1 ? ` @ ${Number(ex.odds).toFixed(2)}` : "";
+            const reason = ex.reason ? ` — ${escapeHtml(ex.reason)}` : "";
+            return `<div class="ex-leg-detail-line"><strong>${escapeHtml(ex.label || "")}${odd}</strong>${reason}</div>`;
+          })
+          .join("");
+        pushSection("Доп. рынки", extrasHtml);
+      }
+
+      if (!sections.length) {
+        return `<div class="ex-leg-detail"><div class="hint-r" style="margin:0">Данные матча подтянутся после обновления ленты.</div></div>`;
+      }
+      return `<div class="ex-leg-detail">${sections.join("")}</div>`;
+    }
+
+    function renderExpressLeg(leg, level) {
+      const legKey = expressLegKey(level, leg);
+      const isLegOpen = expressOpenLegs.has(legKey);
+      const when = formatKickoff(leg.kickoff);
+      const odd = leg.odds != null && Number(leg.odds) > 1 ? ` @ ${Number(leg.odds).toFixed(2)}` : "";
+      return `<div class="ex-leg-accordion leg${isLegOpen ? " open" : ""}">
+        <button class="ex-leg-toggle" type="button" data-ex-leg="${escapeHtml(legKey)}">
+          <div class="leg-ex-row">
+            <div class="leg-ex-info">
+              <div class="teams">${escapeHtml(leg.home)} — ${escapeHtml(leg.away)}</div>
+              <div class="meta-line">${escapeHtml(leg.league || "")}${leg.league && when ? " · " : ""}${when}</div>
+            </div>
+            <div class="leg-ex-pick">
+              <span class="pick">${escapeHtml(shortLabel(leg.pick))}${odd}</span>
+            </div>
+            <span class="ex-leg-chevron">▼</span>
+          </div>
+        </button>
+        <div class="ex-leg-body">${renderExpressLegDetail(leg)}</div>
+      </div>`;
+    }
+
+    function renderExpressAiBox(ex) {
+      const lines = ex.aiReasoning || [];
+      const title = ex.aiTitle || "ИИ · почему этот купон";
+      if (!lines.length) return "";
+      const body = lines
+        .map((t) => `<div class="ai-line">${escapeHtml(t)}</div>`)
+        .join("");
+      return `<div class="ai-box"><div class="ai-title">${escapeHtml(title)}</div>${body}</div>`;
+    }
+
+    function renderExpressCard(ex, level) {
+      if (!ex?.matches?.length) {
+        return `<div class="ex-row"><div class="block ex-panel"><div class="sec">${escapeHtml(ex?.title || "Купон")}</div>
+          <div class="hint">Не набралось ног из группы A — смотри вкладку «Одинары A».</div></div></div>`;
+      }
+      const isOpen = expressOpenLevels.has(level);
+      const taken = isExpressTaken(level);
+      const legs = ex.matches.map((l) => renderExpressLeg(l, level)).join("");
+      const takeBtn = level
+        ? `<div class="ex-take-wrap">
+            <button class="btn btn-take${taken ? " taken" : ""}" type="button" data-take-express="${level}"${taken ? " disabled" : ""}>${taken ? "✓ Взят" : "Взять экспресс"}</button>
+          </div>`
+        : "";
+      const confirmBar =
+        expressReplaceConfirm === level
+          ? `<div class="ex-replace-confirm">
+              <span>Заменить «${escapeHtml(ex.title)}»?</span>
+              <button class="btn" type="button" data-replace-cancel="${level}">Нет</button>
+              <button class="btn on" type="button" data-replace-confirm="${level}">Да, заменить</button>
+            </div>`
+          : "";
+      const refreshBtn = level
+        ? `<div class="ex-row-side">
+            <button class="btn-ex-refresh${expressReplacing === level ? " spinning" : ""}" type="button" data-replace-express="${level}" title="Заменить экспресс"${expressReplacing ? " disabled" : ""}>${expressRefreshIcon()}</button>
+            ${confirmBar}
+          </div>`
+        : "";
+      return `<div class="ex-row">
+        <div class="block ex-panel${isOpen ? " open" : ""}" data-express-level="${level || ""}">
+          <button class="ex-blind-toggle" type="button" data-ex-toggle="${level}">
+            <div class="ex-blind-head">
+              <div class="sec">${escapeHtml(ex.title)}</div>
+              <div class="ex-odds">×${Number(ex.total_odds || 0).toFixed(2)}</div>
+              <span class="ex-blind-chevron">▼</span>
+              <div class="hint">${escapeHtml(ex.subtitle || "")}</div>
+            </div>
+          </button>
+          <div class="ex-blind-body">
+            ${legs}
+            ${renderExpressAiBox(ex)}
+          </div>
+          ${takeBtn}
+        </div>
+        ${refreshBtn}
+      </div>`;
+    }
+
+    function renderExpressContent() {
+      const cap = board.capperExpresses || {};
+      const order = [
+        { key: "safe", fallback: "Уверенный" },
+        { key: "medium", fallback: "Средний" },
+        { key: "risky", fallback: "Рискованный" },
+      ];
+      return order
+        .map(({ key, fallback }) =>
+          renderExpressCard(cap[key] || { title: fallback, matches: [] }, key),
+        )
+        .join("");
+    }
+
+    function wireExpressButtons() {
+      /* клики через делегирование на contentEl */
+    }
+
+    function renderExpressMode() {
+      const cap = board.capperExpresses || {};
+      const hasCapperField = Object.prototype.hasOwnProperty.call(board, "capperExpresses");
+      const hasAny = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
+
+      if (board.warming) {
+        return `<div class="block"><div class="hint">Лента ещё грузится — подожди несколько секунд.</div></div>`;
+      }
+      if (!hasCapperField) {
+        return `<div class="block"><div class="banner" style="margin-bottom:10px">Сервер со старой версией — перезапусти <b>start.bat</b> и нажми F5.</div></div>`;
+      }
+      if (!hasAny) {
+        return `<div class="block"><div class="sec">Экспрессы <span class="tier A">A</span></div>
+          <div class="hint">Не хватает одинаров A — подожди обновление ленты.</div></div>`;
+      }
+
+      return `<div class="block" style="padding-bottom:8px">
+        <div class="sec">Экспрессы</div>
+        <div class="hint">Только из одинаров группы A — те же матчи, что во вкладке «Одинары A».</div>
+      </div>
+      ${renderExpressContent()}`;
+    }
+
+    function findSingleRow(leg) {
+      const singles = Object.values(board.singlesBySport || {}).flat();
+      return singles.find((s) => s.home === leg.home && s.away === leg.away);
+    }
+
+    function shortenReason(text, max = 72) {
+      const t = String(text || "").replace(/\s+/g, " ").trim();
+      if (!t) return "";
+      if (t.length <= max) return t;
+      return `${t.slice(0, max - 1)}…`;
+    }
+
+    /** Одна короткая строка вывода по ноге — из данных одинара. */
+    function compactAiLine(row, leg) {
+      const pick = shortLabel(leg.pick);
+      if (!row) return `${pick}: данных одинара нет`;
+      const reason = row.profilePick?.main?.reason;
+      if (reason) return `${pick} — ${shortenReason(reason)}`;
+
+      const hs = row.homeProfile?.summary;
+      const as = row.awayProfile?.summary;
+      if (hs?.avgIT != null && as?.avgIT != null) {
+        return `${pick}: атака ${hs.avgIT} / ${as.avgIT} гола, ср.Т ${hs.avgT ?? "—"}`;
+      }
+      const h = row.h2hSlim || row.h2h;
+      if (h?.n >= 2 && h.leanSide) {
+        return `${pick}: очные ${h.n} игр, перекос ${h.leanSide}`;
+      }
+      return `${pick}: сигнал A из ленты`;
+    }
+
+    function buildCompactAiSummary(e) {
+      const legs = e.legs || [];
+      const lines = legs.map((leg) => {
+        const row = findSingleRow(leg);
+        const home = leg.home?.split(" ").slice(0, 2).join(" ") || leg.home;
+        return `${home}: ${compactAiLine(row, leg)}`;
+      });
+      let strong = 0;
+      for (const leg of legs) {
+        const row = findSingleRow(leg);
+        if (row?.profilePick?.main?.reason || row?.aiPick?.tier === "A") strong++;
+      }
+      const kf = Number(displayExpressOdds(e).show || 0).toFixed(2);
+      lines.push(
+        `Итог: ${legs.length} ног A × ${kf}. По форме/атаке сильный сигнал у ${strong} из ${legs.length}.`,
+      );
+      return lines.slice(0, 7);
+    }
+
+    function renderStatFormBlock(homeName, homeForm, awayName, awayForm) {
+      const rows = [];
+      const hf = Array.isArray(homeForm) ? homeForm : [];
+      const af = Array.isArray(awayForm) ? awayForm : [];
+      if (hf.length) {
+        rows.push(
+          `<div class="stat-form-team"><span class="stat-form-name">${escapeHtml(homeName)}</span><span class="stat-form-seq">${renderFormSeq(hf)}</span></div>`,
+        );
+      }
+      if (af.length) {
+        rows.push(
+          `<div class="stat-form-team"><span class="stat-form-name">${escapeHtml(awayName)}</span><span class="stat-form-seq">${renderFormSeq(af)}</span></div>`,
+        );
+      }
+      return rows.join("");
+    }
+
+    function legResultMeta(leg) {
+      const view = legForDisplay(leg);
+      if (view.result === "win") return { text: "зашло", mark: "✓", cls: "win" };
+      if (view.result === "loss") return { text: "мимо", mark: "✗", cls: "loss" };
+      return { text: "ожидание", mark: "…", cls: "pending" };
+    }
+
+    function legFailHint(leg) {
+      const view = legForDisplay(leg);
+      if (view.result !== "loss" || !view.score) return "";
+      const parts = String(view.score).split(":");
+      const h = Number(parts[0]);
+      const a = Number(parts[1]);
+      if (!Number.isFinite(h) || !Number.isFinite(a)) return "";
+      const pick = shortLabel(leg.pick).toUpperCase();
+      const draw = h === a;
+      const homeWin = h > a;
+      const awayWin = a > h;
+      if (pick === "П1" && draw) return "ничья — нужна была победа хозяев";
+      if (pick === "П2" && draw) return "ничья — нужна была победа гостей";
+      if (pick === "П1" && awayWin) return "победа гостей — ставка на хозяев";
+      if (pick === "П2" && homeWin) return "победа хозяев — ставка на гостей";
+      if (pick === "Х" && !draw) return "не ничья";
+      if (pick === "1X" && awayWin) return "победа гостей — не зашёл двойной шанс";
+      if (pick === "X2" && homeWin) return "победа хозяев — не зашёл двойной шанс";
+      if (pick === "12" && draw) return "ничья — нужен был исход без ничьей";
+      return "";
+    }
+
+    function renderLegOutcomeMini(leg) {
+      const view = legForDisplay(leg);
+      if (view.result !== "win" && view.result !== "loss") return "";
+      const meta = legResultMeta(view);
+      const score = view.score ? view.score : "—";
+      return `<div class="stat-outcome-mini ${meta.cls}">
+        <span>Счёт ${escapeHtml(score)}</span>
+        <span class="stat-outcome-pill">${escapeHtml(meta.text)}</span>
+      </div>`;
+    }
+
+    function couponAiLines(e) {
+      return (e?.aiReasoning?.length ? e.aiReasoning : buildCompactAiSummary(e || { legs: [] })).filter(Boolean);
+    }
+
+    function roundScore(n) {
+      const x = Number(n);
+      if (!Number.isFinite(x)) return null;
+      return Math.max(0, Math.round(x));
+    }
+
+    function avgPairSum(home, away) {
+      const h = Number(home);
+      const a = Number(away);
+      if (!Number.isFinite(h) || !Number.isFinite(a)) return null;
+      return h + a;
+    }
+
+    function fmtAvgPair(label, home, away, digits = 1) {
+      const h = Number(home);
+      const a = Number(away);
+      if (!Number.isFinite(h) && !Number.isFinite(a)) return null;
+      const hl = Number.isFinite(h) ? h.toFixed(digits) : "—";
+      const al = Number.isFinite(a) ? a.toFixed(digits) : "—";
+      return `${label} ~${hl} / ${al}`;
+    }
+
+    /** Прогноз «мозга» по матчу: счёт, тотал, углы/карточки и т.д. */
+    function buildLegBrainLines(row, leg, entry) {
+      const lines = [];
+      const push = (s) => {
+        const t = String(s || "").replace(/\s+/g, " ").trim();
+        if (t && !lines.includes(t)) lines.push(t);
+      };
+
+      if (row) {
+        const eg = row.expectedGoals;
+        const xg = row.xg;
+        const hp = row.homeProfile;
+        const ap = row.awayProfile;
+        const st = row.extraStats || {};
+
+        if (eg?.home != null && eg?.away != null) {
+          const sh = roundScore(eg.home);
+          const sa = roundScore(eg.away);
+          const tot = avgPairSum(eg.home, eg.away);
+          push(
+            `Жду счёт около ${sh}:${sa}${tot != null ? `, тотал голов ~${tot.toFixed(1)}` : ""}.`,
+          );
+        } else if (xg?.homeAvg != null && xg?.awayAvg != null) {
+          const sh = roundScore(xg.homeAvg);
+          const sa = roundScore(xg.awayAvg);
+          const tot = avgPairSum(xg.homeAvg, xg.awayAvg);
+          push(
+            `По xG ближе к ${sh}:${sa}${tot != null ? `, суммарно ~${tot.toFixed(1)} гола` : ""}.`,
+          );
+        } else if (hp?.summary?.avgIT != null && ap?.summary?.avgIT != null) {
+          const sh = roundScore(hp.summary.avgIT);
+          const sa = roundScore(ap.summary.avgIT);
+          let s = `Средняя атака ${sh}:${sa} гола`;
+          if (hp.summary.avgT != null) s += `, тотал матча ~${Number(hp.summary.avgT).toFixed(1)}`;
+          push(s + ".");
+        }
+
+        const sideBits = [];
+        const corners = fmtAvgPair("углы", st.corners?.home, st.corners?.away);
+        if (corners) sideBits.push(corners);
+        const yellow = fmtAvgPair("жёлтые", st.yellowCards?.home, st.yellowCards?.away);
+        if (yellow) sideBits.push(yellow);
+        const offs = fmtAvgPair(
+          "офсайды",
+          st.offsides?.home ?? st.avgOffsides?.home,
+          st.offsides?.away ?? st.avgOffsides?.away,
+        );
+        if (offs) sideBits.push(offs);
+        const fouls = fmtAvgPair("фолы", st.fouls?.home, st.fouls?.away);
+        if (fouls) sideBits.push(fouls);
+        const reds = fmtAvgPair("красные", st.redCards?.home, st.redCards?.away, 2);
+        if (reds && (Number(st.redCards?.home) > 0.05 || Number(st.redCards?.away) > 0.05)) {
+          sideBits.push(reds);
+        }
+        if (sideBits.length) {
+          push(`По стилю матча: ${sideBits.slice(0, 3).join(", ")}.`);
+        }
+
+        const pick = shortLabel(leg.pick);
+        const reason = row.profilePick?.main?.reason;
+        if (reason) {
+          push(`${pick}: ${shortenReason(reason, 110)}`);
+        }
+
+        for (const line of collectAiLines(row)) {
+          if (lines.length >= 4) break;
+          if (reason && line === reason) continue;
+          push(shortenReason(line, 100));
+        }
+
+        if (row.motivation?.text && lines.length < 4) {
+          push(shortenReason(row.motivation.text, 90));
+        }
+      }
+
+      if (!lines.length && entry) {
+        const home = String(leg.home || "");
+        const away = String(leg.away || "");
+        const hit = couponAiLines(entry).find((t) =>
+          (home && t.includes(home)) || (away && t.includes(away)),
+        );
+        if (hit) {
+          const stripped = hit
+            .replace(`${home} — ${away}`, "")
+            .replace(/^\s*\([^)]+\)\s*:?\s*/, "")
+            .replace(/^:\s*/, "")
+            .trim();
+          push(stripped || hit);
+        }
+      }
+
+      if (!lines.length) {
+        push(compactAiLine(row, leg));
+      }
+
+      return lines.slice(0, 4);
+    }
+
+    function legAiReasonText(e, leg) {
+      return buildLegBrainLines(findSingleRow(leg), leg, e).join(" ");
+    }
+
+    function statBetText(label, cell) {
+      if (!cell?.label) return null;
+      return `${label} ${cell.label}`;
+    }
+
+    function buildLegFactItems(leg, row) {
+      if (!row) return [];
+      const hp = row.homeProfile;
+      const ap = row.awayProfile;
+      const eg = row.expectedGoals;
+      const xg = row.xg;
+      const st = row.extraStats || {};
+      const lineItems = [];
+
+      const goalsParts = [];
+      if (eg?.home != null && eg?.away != null) {
+        goalsParts.push(
+          `ожид. ${Number(eg.home).toFixed(2)} / ${Number(eg.away).toFixed(2)}`,
+        );
+      } else if (xg?.homeAvg != null && xg?.awayAvg != null) {
+        goalsParts.push(`xG ${Number(xg.homeAvg).toFixed(2)} / ${Number(xg.awayAvg).toFixed(2)}`);
+      } else if (hp?.summary) {
+        goalsParts.push(
+          `ср. ${hp.summary.avgIT ?? "—"} / ${ap?.summary?.avgIT ?? "—"}`,
+        );
+        if (hp.summary.avgT != null) goalsParts.push(`тотал ${hp.summary.avgT}`);
+      }
+      if (st.corners?.home != null && st.corners?.away != null) {
+        goalsParts.push(
+          `углы ${Number(st.corners.home).toFixed(1)} / ${Number(st.corners.away).toFixed(1)}`,
+        );
+      }
+      if (goalsParts.length) lineItems.push({ kind: "text", value: goalsParts.join(" · ") });
+
+      const formHtml = renderStatFormBlock(
+        hp?.name || leg.home,
+        hp?.form,
+        ap?.name || leg.away,
+        ap?.form,
+      );
+      if (formHtml) lineItems.push({ kind: "html", value: formHtml });
+
+      const betParts = [];
+      const ht = hp?.betTable;
+      const at = ap?.betTable;
+      const b1 = statBetText("ИТБ 1.5", ht?.itb15);
+      const b2 = statBetText("ТБ 2.5", ht?.over25);
+      const b3 = statBetText("ОЗ", ht?.btts);
+      const homeName = shortTeamLabel(hp?.name || leg.home);
+      const awayName = shortTeamLabel(ap?.name || leg.away);
+      const b4 = statBetText(`победы ${homeName}`, ht?.win);
+      const b5 = statBetText(`победы ${awayName}`, at?.win);
+      for (const b of [b1, b2, b3, b4, b5]) {
+        if (b) betParts.push(b);
+      }
+      if (betParts.length) lineItems.push({ kind: "text", value: betParts.join(" · ") });
+
+      const h = row.h2hSlim || row.h2h;
+      for (const line of h2hAiLines(row, h)) {
+        lineItems.push({ kind: "text", value: line });
+      }
+
+      return lineItems;
+    }
+
+    function statLegKey(entryId, leg) {
+      return `${entryId}|${matchPickKey(leg.home, leg.away)}`;
+    }
+
+    function renderStatLegGridRow(leg, entry) {
+      const entryId = entry?.id || "";
+      const legKey = statLegKey(entryId, leg);
+      const factsOpen = statLegFactsOpen.has(legKey);
+      const view = legForDisplay(leg);
+      const row = findSingleRow(leg);
+      const meta = legResultMeta(view);
+      const odd = leg.odds != null && Number(leg.odds) > 1 ? ` @ ${Number(leg.odds).toFixed(2)}` : "";
+      const when = leg.kickoff ? formatKickoff(leg.kickoff) : "";
+      const league = leg.league || "";
+      const metaLine = [league, when].filter(Boolean).join(" · ");
+      const lineItems = buildLegFactItems(leg, row);
+      const hint = legFailHint(view);
+      const factsHtml = lineItems.length
+        ? `<div class="stat-leg-facts">${lineItems
+            .map((item) =>
+              item.kind === "html"
+                ? `<div class="stat-leg-line stat-leg-form">${item.value}</div>`
+                : `<div class="stat-leg-line">${escapeHtml(item.value)}</div>`,
+            )
+            .join("")}</div>`
+        : "";
+      const brainLines = buildLegBrainLines(row, leg, entry);
+      const aiHtml = brainLines.length
+        ? brainLines
+            .map((t) => `<div class="stat-leg-ai-line">${escapeHtml(t)}</div>`)
+            .join("")
+        : `<div class="stat-leg-ai-line">Мало данных — обнови ленту в «Одинары A».</div>`;
+
+      return `<div class="stat-leg-grid${factsOpen ? "" : " leg-facts-collapsed"}">
+        <div class="stat-leg-left ${meta.cls}">
+          <div class="stat-leg-pick">${escapeHtml(shortLabel(leg.pick))}${odd}</div>
+          <div class="stat-leg-info">
+            <div class="teams">${escapeHtml(leg.home)} — ${escapeHtml(leg.away)}</div>
+            ${metaLine ? `<div class="meta-line">${escapeHtml(metaLine)}</div>` : ""}
+          </div>
+          <span class="stat-leg-status ${meta.cls}" title="${escapeHtml(meta.text)}">${meta.mark}</span>
+        </div>
+        <div class="stat-leg-right">
+          <div class="stat-leg-ai">${aiHtml}</div>
+          <div class="stat-leg-right-foot">
+            ${renderLegOutcomeMini(leg)}
+            <button class="btn-stat-leg-fold" type="button" data-stat-leg-fold="${escapeHtml(legKey)}">${factsOpen ? "Свернуть" : "Подробнее"}</button>
+          </div>
+          <div class="stat-leg-facts-wrap">
+            ${hint ? `<div class="stat-leg-hint">${escapeHtml(hint)}</div>` : ""}
+            ${factsHtml || `<div class="hint-r" style="margin:0">Факты подтянутся после обновления ленты.</div>`}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function renderLegStatsPanel(legs, entry) {
+      const blocks = (legs || []).map((leg) => renderStatLegGridRow(leg, entry)).join("");
+      if (!blocks) {
+        return `<div class="stat-leg-panel"><div class="hint" style="margin:0">Нет ног в купоне.</div></div>`;
+      }
+      return `<div class="stat-leg-panel">${blocks}</div>`;
+    }
+
+    function renderExpressOddsLine(e, when) {
+      const odds = displayExpressOdds(e);
+      const show = odds.show > 0 ? odds.show.toFixed(2) : "—";
+      const calcHint =
+        odds.isBook && Math.abs(odds.book - odds.calc) > 0.01
+          ? `<span class="stat-kf-calc">расч. ×${odds.calc.toFixed(2)}</span>`
+          : "";
+      if (editingOddsId === e.id) {
+        const draft = show !== "—" ? show : "";
+        return `<div class="meta-line stat-odds-row stat-kf-edit-wrap">
+          <span>${when}</span>
+          <span class="stat-kf-edit">
+            <label for="kf-${e.id}">КФ БК</label>
+            <input id="kf-${e.id}" type="text" inputmode="decimal" class="stat-kf-input" data-odds-input="${e.id}" value="${draft}" />
+            <button class="btn stat-kf-save" type="button" data-save-odds="${e.id}">OK</button>
+            <button class="btn stat-kf-cancel" type="button" data-cancel-odds-edit>Отмена</button>
+          </span>
+        </div>`;
+      }
+      return `<div class="meta-line stat-odds-row">
+        <span>${when}</span>
+        <span class="stat-kf-wrap">
+          · <span class="stat-kf-book">×${show}</span>${calcHint}
+          <button class="btn-kf-edit" type="button" data-edit-odds="${e.id}" title="КФ из БК">⋯</button>
+        </span>
+      </div>`;
+    }
+
+    function renderStatsMode(history) {
+      const items = repairExpressHistory(history || loadExpressHistory(), { persist: true });
+      expressHistoryCache = items;
+      const stats = expressHistoryStats(items);
+      const pending = items.filter((e) => e.result === "pending");
+      const done = items.filter((e) => e.result === "win" || e.result === "loss");
+
+      const renderEntry = (e) => {
+        const pill =
+          e.result === "win"
+            ? `<span class="stat-pill win">зашло</span>`
+            : e.result === "loss"
+              ? `<span class="stat-pill loss">мимо</span>`
+              : `<span class="stat-pill pending">в работе</span>`;
+        const when = e.takenAt ? formatKickoff(e.takenAt) : "";
+        const cancelBtn =
+          e.result === "pending"
+            ? `<button class="btn btn-cancel" type="button" data-cancel-express="${escapeHtml(e.id)}">Отменить</button>`
+            : "";
+        const scoresOpen = statScoresOpen.has(e.id);
+        return `<div class="block stat-entry${scoresOpen ? "" : " compact"}" data-express-id="${escapeHtml(e.id)}">
+          <div class="stat-coupon-head">
+            <div class="stat-coupon-head-info">
+              <div class="sec">${escapeHtml(e.title || LEVEL_LABEL[e.level] || "Экспресс")} ${pill}</div>
+              ${renderExpressOddsLine(e, when)}
+            </div>
+            <button class="btn-stat-fold" type="button" data-stat-fold="${escapeHtml(e.id)}">${scoresOpen ? "Свернуть" : "Развернуть"}</button>
+          </div>
+          <div class="stat-coupon-body">
+            ${renderLegStatsPanel(e.legs, e)}
+          </div>
+          ${cancelBtn}
+        </div>`;
+      };
+
+      const activeOn = statsSubView === "active" ? " on" : "";
+      const archiveOn = statsSubView === "archive" ? " on" : "";
+
+      const toolbar = `<div class="stat-toolbar">
+        <button class="stat-cube stat-cube-live${activeOn}" type="button" data-stats-view="active" title="В лайве">${stats.pending || 0} LIVE</button>
+        <button class="stat-cube${archiveOn}" type="button" data-stats-view="archive" title="Сыгранные">Сыгранные${stats.done ? `<span class="stat-cube-n">${stats.done}</span>` : ""}</button>
+      </div>`;
+
+      const pendingHtml =
+        statsSubView === "active"
+          ? pending.length
+            ? pending.map(renderEntry).join("")
+            : `<div class="hint">Нет купонов в работе — возьми экспресс или собери свой в «Одинары A».</div>`
+          : "";
+
+      const doneHtml =
+        statsSubView === "archive"
+          ? done.length
+            ? done.slice(0, 40).map(renderEntry).join("")
+            : `<div class="hint">Сыгранных купонов пока нет — здесь появятся итоги: зашло или мимо.</div>`
+          : "";
+
+      return `${toolbar}${pendingHtml}${doneHtml}`;
+    }
+
+    async function refreshStatsTab() {
+      contentEl.innerHTML = `<div class="hint">Обновляю ленту и счёт…</div>`;
+      expressHistoryCache = await settleExpressHistory();
+      await load(false);
+    }
+
+    function renderCustomPickBar() {
+      if (!customPickMode || viewMode !== "a") return "";
+      const legs = getSelectedCustomLegs();
+      const kf = calcLegsOdds(legs);
+      return `<div class="custom-pick-bar">
+        <div class="custom-pick-meta">
+          <strong>Выбрано: ${customPicks.size}</strong>
+          ${customPicks.size >= 2
+            ? `<span>кф ~×${kf.toFixed(2)}</span>`
+            : `<span>нужно минимум 2 матча</span>`}
+        </div>
+        <div class="custom-pick-actions">
+          <button class="btn" type="button" data-custom-cancel>Отмена</button>
+          <button class="btn on" type="button" data-custom-confirm${customPicks.size < 2 ? " disabled" : ""}>В статистику</button>
+        </div>
+      </div>`;
+    }
+
+    function renderSinglesMode() {
+      if (viewMode === "express") {
+        return renderExpressMode();
+      }
+      if (viewMode === "stats") {
+        return renderStatsMode(expressHistoryCache);
+      }
+      const by = viewMode === "archive"
+        ? (board.singlesArchiveBySport || {})
+        : (board.singlesBySport || {});
+      const active = sportsWithData(by);
+      if (active.length) {
+        if (!active.some((t) => t.id === sportTab)) sportTab = active[0].id;
+      } else if (viewMode === "a") {
+        // запас: вдруг объект пустой, а счётчик есть
+        sportTab = "football";
+      }
+
+      const sportTabsHtml = active.length > 1
+        ? `<div class="sport-tabs">${active.map((t) => {
+            const n = (by[t.id] || []).length;
+            return `<button class="btn${t.id === sportTab ? " on" : ""}" data-sport="${t.id}" type="button">${t.label} (${n})</button>`;
+          }).join("")}</div>`
+        : "";
+
+      const sportMeta = SPORT_TABS.find((t) => t.id === sportTab) || active[0];
+      const list = by[sportTab] || [];
+      const title = viewMode === "archive" ? "Архив B/C (dev)" : "Одинары A";
+      const totalHint = viewMode === "archive"
+        ? (board.singlesArchiveCount ?? 0)
+        : (board.singlesCount ?? 0);
+
+      if (!list.length && !active.length) {
+        return `<div class="block"><div class="sec">${title}</div>
+          <div class="hint">Сейчас пусто (в ответе сервера ${totalHint}). Нажми F5 или подожди обновление.</div></div>`;
+      }
+
+      return `
+        <div class="block" style="padding-bottom:8px">
+          <div class="singles-head">
+            <div>
+              <div class="sec">${title}</div>
+              <div class="tier-legend">
+                ${viewMode === "archive"
+                  ? `<span><span class="tier B">B</span> средний</span>
+                     <span><span class="tier C">C</span> слабый / мало данных</span>
+                     <span>A скрыты — они в основной вкладке</span>`
+                  : `<span><span class="tier A">A</span> сильный сигнал — в ленте</span>
+                     <span>B/C → вкладка Dev</span>`}
+              </div>
+            </div>
+            ${viewMode === "a"
+              ? `<button class="btn btn-custom-express${customPickMode ? " on" : ""}" type="button" id="btnCustomExpress">${customPickMode ? "Отмена" : "Собрать свой экспресс"}</button>`
+              : ""}
+          </div>
+          ${sportTabsHtml}
+        </div>
+        ${renderSingles(list, sportMeta?.label || sportTab, { archive: viewMode === "archive" })}
+        ${renderCustomPickBar()}
+      `;
+    }
+
+    let expressHistoryCache = [];
+
+    function syncViewButtons() {
+      document.querySelectorAll("[data-view]").forEach((b) => {
+        b.classList.toggle("on", b.dataset.view === viewMode);
+      });
+      const statsBtn = document.getElementById("viewTabStats");
+      if (statsBtn) {
+        const items = expressHistoryCache.length
+          ? expressHistoryCache
+          : repairExpressHistory(loadExpressHistory(), { persist: false });
+        const { pending } = expressHistoryStats(items);
+        statsBtn.textContent = pending ? `В работе (${pending})` : "В работе";
+      }
+    }
+
+    async function render(opts = {}) {
+      const skipSettle = Boolean(opts.skipSettle);
+      syncViewButtons();
+      if (viewMode === "stats" && !skipSettle) {
+        expressHistoryCache = await settleExpressHistory();
+      }
+      try {
+        contentEl.innerHTML = renderSinglesMode();
+      } catch (e) {
+        console.error(e);
+        contentEl.innerHTML = `<div class="hint">Ошибка отрисовки: ${escapeHtml(e?.message || e)}. Обнови страницу.</div>`;
+        return;
+      }
+
+      if (editingOddsId) {
+        const input = contentEl.querySelector(`[data-odds-input="${editingOddsId}"]`);
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }
+
+      document.body.classList.toggle("custom-pick-open", customPickMode && viewMode === "a");
+
+      document.getElementById("btnCustomExpress")?.addEventListener("click", () => {
+        toggleCustomPickMode();
+      });
+
+      document.querySelectorAll("[data-cancel-express]").forEach((btn) => {
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const id = btn.dataset.cancelExpress;
+          if (id) cancelExpress(id);
+        });
+      });
+      wireExpressButtons();
+      document.querySelectorAll("[data-stats-view]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          statsSubView = btn.dataset.statsView === "archive" ? "archive" : "active";
+          saveStatsSubView(statsSubView);
+          render();
+        });
+      });
+      document.querySelectorAll("[data-sport]").forEach((b) => {
+        b.addEventListener("click", () => {
+          sportTab = b.dataset.sport;
+          openKey = null;
+          render();
+        });
+      });
+      document.querySelectorAll("[data-single]").forEach((el) => {
+        el.addEventListener("click", () => {
+          if (customPickMode && viewMode === "a") {
+            const pickKey = el.dataset.matchPick;
+            if (!pickKey) return;
+            if (customPicks.has(pickKey)) customPicks.delete(pickKey);
+            else customPicks.add(pickKey);
+            render();
+            return;
+          }
+          const k = el.dataset.single;
+          openKey = openKey === k ? null : k;
+          render();
+        });
+      });
+    }
+
+    let warmPollTimer = null;
+    let firstLoad = true;
+
+    function isBoardWarming(data = board) {
+      const fb = (data.singlesBySport?.football || []).length;
+      return (
+        data.warming ||
+        (!data.error && fb === 0 && (data.singlesCount || 0) === 0 && (data.matchCount || 0) === 0)
+      );
+    }
+
+    function scheduleWarmPoll() {
+      if (warmPollTimer) clearTimeout(warmPollTimer);
+      if (!isBoardWarming()) return;
+      warmPollTimer = setTimeout(() => load(false), 5000);
+    }
+
+    async function load(force) {
+      const warmingUi = force ? false : isBoardWarming();
+      contentEl.innerHTML = `<div class="hint">${
+        force
+          ? "Тянем свежие матчи…"
+          : warmingUi || firstLoad
+            ? "Прогрев ленты… после перезапуска это может занять до 2 минут."
+            : "Загрузка…"
+      }</div>`;
+      try {
+        const ctrl = new AbortController();
+        const timeoutMs = force || firstLoad || warmingUi ? 180000 : 30000;
+        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+        const res = await fetch(force ? "/api/matches?refresh=1" : "/api/matches", {
+          signal: ctrl.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        board = await res.json();
+        firstLoad = false;
+
+        const fb = (board.singlesBySport?.football || []).length;
+        if (isBoardWarming(board)) {
+          showBanner(board.note || "Прогрев… подожди, страница обновится сама (до 2 минут).", true);
+        } else if (board.error) showBanner(board.error, true);
+        else if (viewMode !== "stats") {
+          const fb = (board.singlesBySport?.football || []).length;
+          const bannerMsg =
+            viewMode === "express"
+              ? "Экспрессы из одинаров A — три уровня риска."
+              : viewMode === "archive"
+                ? "Dev-вкладка: B и C. Основная лента показывает только A."
+                : `В ленте тир A · футбол ${fb}. B/C — во вкладке «Dev · B/C».`;
+          showBanner(bannerMsg, false);
+        } else {
+          showBanner("", false);
+        }
+
+        sportTab = "football";
+        await settleExpressHistory();
+        await render();
+        scheduleWarmPoll();
+      } catch (e) {
+        if (e?.name === "AbortError" && (firstLoad || isBoardWarming())) {
+          showBanner("Прогрев ленты… жду ответ сервера, не закрывай вкладку.", true);
+          contentEl.innerHTML = `<div class="hint">Прогрев ленты… после перезапуска сервера это нормально, подожди до 2 минут.</div>`;
+          scheduleWarmPoll();
+          return;
+        }
+        const msg = e?.name === "AbortError"
+          ? "Слишком долго нет ответа — обнови страницу (F5)."
+          : `Не удалось загрузить данные (${e?.message || "сеть"}).`;
+        showBanner(msg, true);
+        contentEl.innerHTML = `<div class="hint">${escapeHtml(msg)}</div>`;
+      }
+    }
+
+    document.querySelectorAll("[data-view]").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const wasStats = viewMode === "stats";
+        viewMode = b.dataset.view;
+        saveViewMode(viewMode);
+        openKey = null;
+        if (viewMode !== "a") {
+          customPickMode = false;
+          customPicks = new Set();
+          document.body.classList.remove("custom-pick-open");
+        }
+        if (viewMode === "stats") {
+          expressHistoryCache = await settleExpressHistory();
+          if (wasStats) {
+            statsSubView = "active";
+            saveStatsSubView(statsSubView);
+          }
+        }
+        if (viewMode === "express") {
+          const cap = board.capperExpresses || {};
+          const hasAny = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
+          if (!hasAny && !board.warming) load(true);
+        }
+        await render();
+        if (viewMode === "stats") {
+          showBanner("", false);
+        } else if (board.ok !== false && Object.keys(board).length) {
+          const msg =
+            viewMode === "express"
+              ? "Экспрессы из одинаров A."
+              : viewMode === "archive"
+                ? "Dev-вкладка: B и C. Основная лента показывает только A."
+                : `В ленте только тир A. B и C — во вкладке «Dev · B/C». Кф основной ≥ 1.33.`;
+          showBanner(msg, false);
+        }
+      });
+    });
+
+    syncViewButtons();
+
+    contentEl.addEventListener("click", (ev) => {
+      const toggleBtn = ev.target.closest("[data-ex-toggle]");
+      if (toggleBtn) {
+        ev.preventDefault();
+        const level = toggleBtn.dataset.exToggle;
+        if (!level) return;
+        if (expressOpenLevels.has(level)) expressOpenLevels.delete(level);
+        else expressOpenLevels.add(level);
+        render();
+        return;
+      }
+      const legToggle = ev.target.closest("[data-ex-leg]");
+      if (legToggle) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const legKey = legToggle.dataset.exLeg;
+        if (!legKey) return;
+        if (expressOpenLegs.has(legKey)) expressOpenLegs.delete(legKey);
+        else expressOpenLegs.add(legKey);
+        render({ skipSettle: true });
+        return;
+      }
+      const statLegFoldBtn = ev.target.closest("[data-stat-leg-fold]");
+      if (statLegFoldBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const legKey = statLegFoldBtn.dataset.statLegFold;
+        if (!legKey) return;
+        if (statLegFactsOpen.has(legKey)) statLegFactsOpen.delete(legKey);
+        else statLegFactsOpen.add(legKey);
+        render({ skipSettle: true });
+        return;
+      }
+      const statFoldBtn = ev.target.closest("[data-stat-fold]");
+      if (statFoldBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = statFoldBtn.dataset.statFold;
+        if (!id) return;
+        if (statScoresOpen.has(id)) statScoresOpen.delete(id);
+        else statScoresOpen.add(id);
+        render({ skipSettle: true });
+        return;
+      }
+      const compactBody = ev.target.closest(".stat-entry.compact .stat-coupon-body");
+      if (compactBody && !ev.target.closest("button, input, a")) {
+        ev.preventDefault();
+        const entry = compactBody.closest("[data-express-id]");
+        const id = entry?.dataset.expressId;
+        if (id) {
+          statScoresOpen.add(id);
+          render({ skipSettle: true });
+        }
+        return;
+      }
+      const takeBtn = ev.target.closest("[data-take-express]");
+      if (takeBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const level = takeBtn.dataset.takeExpress;
+        if (!level || expressReplacing) return;
+        if (takeBtn.classList.contains("taken")) {
+          showToast("Уже в статистике");
+          return;
+        }
+        takeExpress(level);
+        return;
+      }
+      const replaceBtn = ev.target.closest("[data-replace-express]");
+      if (replaceBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const level = replaceBtn.dataset.replaceExpress;
+        if (level && !expressReplacing) replaceExpress(level, false);
+        return;
+      }
+      const replaceOk = ev.target.closest("[data-replace-confirm]");
+      if (replaceOk) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const level = replaceOk.dataset.replaceConfirm;
+        if (level) replaceExpress(level, true);
+        return;
+      }
+      const replaceNo = ev.target.closest("[data-replace-cancel]");
+      if (replaceNo) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        expressReplaceConfirm = null;
+        render({ skipSettle: true });
+        return;
+      }
+      const editBtn = ev.target.closest("[data-edit-odds]");
+      if (editBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        editingOddsId = editBtn.dataset.editOdds || null;
+        render({ skipSettle: true });
+        return;
+      }
+      const saveBtn = ev.target.closest("[data-save-odds]");
+      if (saveBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = saveBtn.dataset.saveOdds;
+        const input = contentEl.querySelector(`[data-odds-input="${id}"]`);
+        if (id && saveExpressBookOdds(id, input?.value)) {
+          render({ skipSettle: true });
+        }
+        return;
+      }
+      if (ev.target.closest("[data-cancel-odds-edit]")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        editingOddsId = null;
+        render({ skipSettle: true });
+        return;
+      }
+      if (ev.target.closest("[data-custom-confirm]")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        confirmCustomExpress();
+        return;
+      }
+      if (ev.target.closest("[data-custom-cancel]")) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        toggleCustomPickMode(false);
+      }
+    });
+
+    contentEl.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      const input = ev.target.closest("[data-odds-input]");
+      if (!input) return;
+      ev.preventDefault();
+      const id = input.dataset.oddsInput;
+      if (id && saveExpressBookOdds(id, input.value)) {
+        render({ skipSettle: true });
+      }
+    });
+
+    load(false);
+  </script>
+</body>
+</html>
