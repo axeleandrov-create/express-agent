@@ -1033,14 +1033,23 @@
     }
 
     async function fetchCapperExpressLevel(level, excludeKeys = collectExcludeKeys()) {
-      const res = await fetch("/api/express/take", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level, excludeKeys }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.coupon?.matches?.length ? data.coupon : null;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 25000);
+      try {
+        const res = await fetch("/api/express/take", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ level, excludeKeys }),
+          signal: ctrl.signal,
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.coupon?.matches?.length ? data.coupon : null;
+      } catch {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     /** Пересобрать купоны, если в них есть матчи из «В работе». */
@@ -2561,24 +2570,50 @@
       return status === 404 || status === 502 || status === 503;
     }
 
-    async function fetchUntilReady(url, signal) {
+    async function fetchBoardUntilReady(url, signal) {
       const started = Date.now();
       const maxMs = 180000;
       while (Date.now() - started < maxMs) {
-        const res = await fetch(url, { cache: "no-store", signal });
-        if (res.ok) return res;
-        if (!isWakeStatus(res.status)) {
-          throw new Error(`HTTP ${res.status}`);
+        let res;
+        try {
+          res = await fetch(url, { cache: "no-store", signal });
+        } catch (e) {
+          if (e?.name === "AbortError") throw e;
+          await new Promise((r) => setTimeout(r, 4000));
+          continue;
         }
+        if (!res.ok) {
+          if (!isWakeStatus(res.status)) throw new Error(`HTTP ${res.status}`);
+          const el = document.getElementById("warm-progress");
+          if (el) {
+            el.textContent = "Облачный сервер просыпается… обычно 30–60 сек, не закрывай вкладку.";
+          } else {
+            contentEl.innerHTML = warmHintHtml("Облачный сервер просыпается… обычно 30–60 сек.");
+          }
+          await new Promise((r) => setTimeout(r, 4000));
+          continue;
+        }
+        const data = await res.json();
+        if (!isBoardWarming(data)) return data;
         const el = document.getElementById("warm-progress");
         if (el) {
-          el.textContent = "Облачный сервер просыпается… обычно 30–60 сек, не закрывай вкладку.";
-        } else {
-          contentEl.innerHTML = warmHintHtml("Облачный сервер просыпается… обычно 30–60 сек.");
+          el.textContent = data.note || "Сервер собирает матчи… подожди до минуты.";
         }
         await new Promise((r) => setTimeout(r, 4000));
       }
       throw new Error("HTTP 404");
+    }
+
+    async function enrichBoardAfterLoad() {
+      try {
+        expressHistoryCache = await settleExpressHistory();
+        const refreshed = await refreshCapperExpressesAgainstHistory();
+        const filled = await ensureMissingCapperExpresses(["safe", "medium", "risky"]);
+        syncTakenMarksWithBoard();
+        if (refreshed || filled || expressHistoryCache) await render({ skipSettle: true });
+      } catch (e) {
+        console.warn("post-load enrich:", e);
+      }
     }
 
     function isBoardWarming(data = board) {
@@ -2609,12 +2644,14 @@
         const timeoutMs = force || firstLoad || warmingUi ? 180000 : 30000;
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         const url = force ? "/api/matches?refresh=1" : "/api/matches";
-        const res = firstLoad || warmingUi
-          ? await fetchUntilReady(url, ctrl.signal)
-          : await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+        if (firstLoad || warmingUi) {
+          board = await fetchBoardUntilReady(url, ctrl.signal);
+        } else {
+          const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          board = await res.json();
+        }
         clearTimeout(timer);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        board = await res.json();
         firstLoad = false;
         stopWarmHealthPoll();
 
@@ -2625,12 +2662,8 @@
         else showBanner("");
 
         sportTab = "football";
-        await settleExpressHistory();
-        const refreshed = await refreshCapperExpressesAgainstHistory();
-        const filled = await ensureMissingCapperExpresses(["safe", "medium", "risky"]);
-        syncTakenMarksWithBoard();
         await render();
-        if (refreshed || filled) await render({ skipSettle: true });
+        enrichBoardAfterLoad();
         scheduleWarmPoll();
       } catch (e) {
         if (
@@ -2674,11 +2707,7 @@
           const cap = board.capperExpresses || {};
           const hasAny = ["safe", "medium", "risky"].some((k) => cap[k]?.matches?.length);
           if (!hasAny && !board.warming) load(true);
-          else {
-            const refreshed = await refreshCapperExpressesAgainstHistory();
-            syncTakenMarksWithBoard();
-            if (refreshed) await render({ skipSettle: true });
-          }
+          else enrichBoardAfterLoad();
         }
         await render();
         if (!board.error && !isBoardWarming(board)) showBanner("");
