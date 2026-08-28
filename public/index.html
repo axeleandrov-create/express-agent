@@ -811,14 +811,6 @@
       }
     }
 
-      try {
-        const m = localStorage.getItem(VIEW_MODE_KEY);
-        return ["a", "express", "stats", "archive"].includes(m) ? m : "a";
-      } catch {
-        return "a";
-      }
-    }
-
     function loadStatsSubView() {
       try {
         const m = localStorage.getItem(STATS_SUBVIEW_KEY);
