@@ -6,6 +6,8 @@
   <meta name="theme-color" content="#f3f4f6" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
   <title>На что ставить</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1262,8 +1264,8 @@
     }
 
     function showBanner(text, isErr) {
-      if (!text) { bannerEl.innerHTML = ""; return; }
-      bannerEl.innerHTML = `<div class="banner${isErr ? " err" : ""}">${escapeHtml(text)}</div>`;
+      if (!text || !isErr) { bannerEl.innerHTML = ""; return; }
+      bannerEl.innerHTML = `<div class="banner err">${escapeHtml(text)}</div>`;
     }
 
     function formatAlt(a) {

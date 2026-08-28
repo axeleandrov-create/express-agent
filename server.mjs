@@ -151,10 +151,11 @@ function emptyBoard(note = "Прогрев ленты…") {
   };
 }
 
-function send(res, code, body, type = "text/plain; charset=utf-8") {
+function send(res, code, body, type = "text/plain; charset=utf-8", extraHeaders = {}) {
   res.writeHead(code, {
     "Content-Type": type,
     "Cache-Control": "no-store",
+    ...extraHeaders,
   });
   res.end(body);
 }
@@ -393,7 +394,10 @@ const server = http.createServer(async (req, res) => {
       send(res, 404, "index.html не найден");
       return;
     }
-    send(res, 200, readFileSync(file), "text/html; charset=utf-8");
+    send(res, 200, readFileSync(file), "text/html; charset=utf-8", {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      Pragma: "no-cache",
+    });
     return;
   }
 
