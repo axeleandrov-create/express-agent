@@ -2540,7 +2540,7 @@
     let firstLoad = true;
 
     function warmHintHtml(extra = "") {
-      return `<div class="hint">Прогрев ленты… после перезапуска это может занять до 2 минут.${extra ? `<br><span id="warm-progress">${escapeHtml(extra)}</span>` : ""}</div>`;
+      return `<div class="hint">Прогрев ленты… после перезапуска до 2 минут. <b>Не закрывай вкладку.</b>${extra ? `<br><span id="warm-progress">${escapeHtml(extra)}</span>` : '<br><span id="warm-progress">Запуск…</span>'}</div>`;
     }
 
     function stopWarmHealthPoll() {
@@ -2568,7 +2568,7 @@
             const s = Number(h.singles) || 0;
             el.textContent = n > 0 || s > 0
               ? `Готово: ${s || n} в ленте. Догружаю на экран…`
-              : "Сервер проснулся, собираем матчи…";
+              : "Сервер проснулся, собираем матчи… (до 2 мин)";
           } else if ((Number(h.matches) || 0) > 0 || (Number(h.singles) || 0) > 0) {
             el.textContent = `Готово: ${h.singles || h.matches} в ленте. Догружаю на экран…`;
           }
@@ -2592,40 +2592,26 @@
       fetch("/api/matches", { cache: "no-store" }).catch(() => {});
     }
 
-    async function waitForHealthReady() {
-      const started = Date.now();
-      const maxMs = 180000;
+    async function fetchBoardUntilReady(url) {
       kickServerWarmup();
+      const maxMs = 300000;
+      const started = Date.now();
       while (Date.now() - started < maxMs) {
         try {
-          const res = await fetch("/api/health", { cache: "no-store" });
-          if (res.ok) {
-            let h;
-            try {
-              h = await res.json();
-            } catch {
-              await new Promise((r) => setTimeout(r, 3000));
-              continue;
-            }
-            const n = Number(h.matches) || 0;
-            const s = Number(h.singles) || 0;
-            if (n > 0 || s > 0) return;
-            updateWarmProgress(
-              h.warming
-                ? n > 0
-                  ? `Сервер собирает ленту… уже ${n} матчей.`
-                  : "Сервер проснулся, собираем матчи…"
-                : "Жду готовность сервера…",
-            );
-          } else if (isWakeStatus(res.status)) {
-            updateWarmProgress("Облачный сервер просыпается… не закрывай вкладку.");
-          }
-        } catch {
-          /* сеть / сон Render — пробуем снова */
+          const data = await fetchBoardQuick(url);
+          if (!isBoardWarming(data)) return data;
+          updateWarmProgress(data.note || "Собираем матчи…");
+        } catch (e) {
+          const msg = String(e?.message || "");
+          updateWarmProgress(
+            /HTTP 404|HTTP 502|HTTP 503/.test(msg)
+              ? "Сервер просыпается… не закрывай вкладку."
+              : "Повтор загрузки…",
+          );
         }
-        await new Promise((r) => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 4000));
       }
-      throw new Error("HTTP 404");
+      throw new Error("HTTP 503");
     }
 
     async function fetchBoardQuick(url, signal) {
@@ -2641,49 +2627,6 @@
         throw new Error("HTTP 502");
       }
       return data;
-    }
-
-    async function fetchBoardWithRetry(url, signal, tries = 4) {
-      let lastErr;
-      for (let i = 0; i < tries; i++) {
-        try {
-          if (i > 0) {
-            updateWarmProgress(`Повтор загрузки матчей (${i + 1}/${tries})…`);
-            await new Promise((r) => setTimeout(r, 2000));
-          }
-          return await fetchBoardQuick(url, signal);
-        } catch (e) {
-          lastErr = e;
-          if (e?.name === "AbortError") throw e;
-        }
-      }
-      throw lastErr || new Error("HTTP 502");
-    }
-
-    async function fetchBoardUntilReady(url) {
-      await waitForHealthReady();
-      updateWarmProgress("Загружаю матчи на экран…");
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 120000);
-      try {
-        let data = await fetchBoardWithRetry(url, ctrl.signal);
-        if (!isBoardWarming(data)) return data;
-
-        const started = Date.now();
-        while (Date.now() - started < 45000) {
-          updateWarmProgress(data.note || "Догружаю матчи на экран…");
-          await new Promise((r) => setTimeout(r, 2500));
-          try {
-            data = await fetchBoardWithRetry(url, ctrl.signal, 2);
-            if (!isBoardWarming(data)) return data;
-          } catch {
-            /* retry */
-          }
-        }
-        return data;
-      } finally {
-        clearTimeout(timer);
-      }
     }
 
     async function enrichBoardAfterLoad() {

@@ -217,21 +217,19 @@ async function getBoard(force = false) {
   }
 
   if (force) {
-    return kickRebuild(true, IS_CLOUD ? "fast" : "full").then((fast) => {
-      if (IS_CLOUD) scheduleFullRebuild(true);
-      return fast;
-    });
+    if (IS_CLOUD) {
+      kickRebuild(true, "fast").then(() => scheduleFullRebuild(true));
+      if (cache.data) return wrapCached(cache.data);
+      return emptyBoard("Обновляем ленту… подожди, страница обновится сама.");
+    }
+    return kickRebuild(true, "full");
   }
 
-  // В облаке сначала быстрая лента (~1 мин), полная догружается в фоне.
+  // В облаке не блокируем HTTP — телефон обрывает долгие запросы (~60 с).
   if (IS_CLOUD && !cache.data) {
-    try {
-      const fast = await kickRebuild(false, "fast");
-      scheduleFullRebuild(false);
-      return fast;
-    } catch {
-      return emptyBoard("Прогрев ленты… подожди до 2 минут, страница обновится сама.");
-    }
+    if (!inflightFast) kickRebuild(false, "fast").then(() => scheduleFullRebuild(false));
+    else scheduleFullRebuild(false);
+    return emptyBoard("Прогрев ленты… обычно 30–90 сек, страница обновится сама.");
   }
 
   if (IS_CLOUD && cache.tier !== "full") {
