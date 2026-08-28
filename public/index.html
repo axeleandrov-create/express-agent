@@ -2570,38 +2570,79 @@
       return status === 404 || status === 502 || status === 503;
     }
 
-    async function fetchBoardUntilReady(url, signal) {
+    function updateWarmProgress(text) {
+      const el = document.getElementById("warm-progress");
+      if (el) el.textContent = text;
+      else if (text) contentEl.innerHTML = warmHintHtml(text);
+    }
+
+    function kickServerWarmup() {
+      fetch("/api/matches", { cache: "no-store" }).catch(() => {});
+    }
+
+    async function waitForHealthReady(signal) {
       const started = Date.now();
       const maxMs = 180000;
+      kickServerWarmup();
       while (Date.now() - started < maxMs) {
-        let res;
         try {
-          res = await fetch(url, { cache: "no-store", signal });
+          const res = await fetch("/api/health", { cache: "no-store", signal });
+          if (res.ok) {
+            let h;
+            try {
+              h = await res.json();
+            } catch {
+              await new Promise((r) => setTimeout(r, 3000));
+              continue;
+            }
+            const n = Number(h.matches) || 0;
+            if (n > 0 && !h.warming) return;
+            updateWarmProgress(
+              h.warming
+                ? n > 0
+                  ? `Сервер собирает ленту… уже ${n} матчей.`
+                  : "Сервер проснулся, собираем матчи…"
+                : "Жду готовность сервера…",
+            );
+          } else if (isWakeStatus(res.status)) {
+            updateWarmProgress("Облачный сервер просыпается… не закрывай вкладку.");
+          }
         } catch (e) {
           if (e?.name === "AbortError") throw e;
-          await new Promise((r) => setTimeout(r, 4000));
-          continue;
         }
-        if (!res.ok) {
-          if (!isWakeStatus(res.status)) throw new Error(`HTTP ${res.status}`);
-          const el = document.getElementById("warm-progress");
-          if (el) {
-            el.textContent = "Облачный сервер просыпается… обычно 30–60 сек, не закрывай вкладку.";
-          } else {
-            contentEl.innerHTML = warmHintHtml("Облачный сервер просыпается… обычно 30–60 сек.");
-          }
-          await new Promise((r) => setTimeout(r, 4000));
-          continue;
-        }
-        const data = await res.json();
-        if (!isBoardWarming(data)) return data;
-        const el = document.getElementById("warm-progress");
-        if (el) {
-          el.textContent = data.note || "Сервер собирает матчи… подожди до минуты.";
-        }
-        await new Promise((r) => setTimeout(r, 4000));
+        await new Promise((r) => setTimeout(r, 3000));
       }
       throw new Error("HTTP 404");
+    }
+
+    async function fetchBoardQuick(url, signal) {
+      const res = await fetch(url, { cache: "no-store", signal });
+      if (!res.ok) {
+        if (isWakeStatus(res.status)) throw new Error(`HTTP ${res.status}`);
+        throw new Error(`HTTP ${res.status}`);
+      }
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("HTTP 502");
+      }
+      return data;
+    }
+
+    async function fetchBoardUntilReady(url, signal) {
+      await waitForHealthReady(signal);
+      let data = await fetchBoardQuick(url, signal);
+      if (!isBoardWarming(data)) return data;
+
+      const started = Date.now();
+      while (Date.now() - started < 60000) {
+        updateWarmProgress(data.note || "Догружаю матчи на экран…");
+        await new Promise((r) => setTimeout(r, 3000));
+        data = await fetchBoardQuick(url, signal);
+        if (!isBoardWarming(data)) return data;
+      }
+      return data;
     }
 
     async function enrichBoardAfterLoad() {
@@ -2666,10 +2707,12 @@
         enrichBoardAfterLoad();
         scheduleWarmPoll();
       } catch (e) {
-        if (
-          (e?.name === "AbortError" || /HTTP 404|HTTP 502|HTTP 503/.test(String(e?.message || ""))) &&
-          (firstLoad || isBoardWarming())
-        ) {
+        const retryable =
+          firstLoad ||
+          isBoardWarming() ||
+          e?.name === "AbortError" ||
+          /HTTP 404|HTTP 502|HTTP 503/.test(String(e?.message || ""));
+        if (retryable) {
           showBanner("Сервер просыпается… не закрывай вкладку, подожди до 2 минут.", true);
           contentEl.innerHTML = warmHintHtml("Жду ответ сервера…");
           startWarmHealthPoll();
@@ -2678,10 +2721,14 @@
         }
         stopWarmHealthPoll();
         const msg = e?.name === "AbortError"
-          ? "Слишком долго нет ответа — обнови страницу (F5)."
+          ? "Слишком долго нет ответа — нажми «Обновить» ниже."
           : `Не удалось загрузить данные (${e?.message || "сеть"}).`;
         showBanner(msg, true);
-        contentEl.innerHTML = `<div class="hint">${escapeHtml(msg)}</div>`;
+        contentEl.innerHTML = `<div class="hint">${escapeHtml(msg)}<br><br><button class="btn on" type="button" id="btn-reload-board">Обновить</button></div>`;
+        document.getElementById("btn-reload-board")?.addEventListener("click", () => {
+          firstLoad = true;
+          load(false);
+        });
       }
     }
 
