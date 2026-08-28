@@ -33,7 +33,7 @@
     .btn {
       border: 1px solid var(--line); background: var(--card); color: var(--text);
       padding: 8px 12px; border-radius: 8px; font: inherit; font-size: 0.86rem;
-      font-weight: 600; cursor: pointer;
+      font-weight: 600; cursor: pointer; touch-action: manipulation;
     }
     .btn:disabled { opacity: 0.55; cursor: wait; }
     .btn.on {
@@ -146,8 +146,9 @@
     }
     .ex-odds { font-weight: 800; color: var(--accent); font-size: 1.05rem; }
     .ex-row {
-      display: flex; align-items: flex-start; gap: 6px; margin-bottom: 12px;
+      display: flex; align-items: flex-start; gap: 6px; margin-bottom: 0;
     }
+    .ex-row-block { margin-bottom: 12px; }
     .ex-row .ex-panel {
       flex: 1; min-width: 0; margin-bottom: 0; padding: 0; overflow: hidden;
     }
@@ -187,14 +188,18 @@
       flex-shrink: 0; min-width: 36px;
     }
     .ex-replace-confirm {
-      display: flex; flex-direction: column; gap: 4px; align-items: stretch;
-      font-size: 0.74rem; color: var(--text); text-align: center;
+      display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+      font-size: 0.82rem; color: var(--text); text-align: left;
+      margin-top: 8px; padding: 10px 12px;
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
     }
-    .ex-replace-confirm .btn { padding: 4px 8px; font-size: 0.72rem; width: 100%; }
+    .ex-replace-confirm-actions { display: flex; gap: 8px; }
+    .ex-replace-confirm .btn { padding: 10px 12px; font-size: 0.82rem; flex: 1; min-height: 44px; }
     .btn-ex-refresh {
       flex-shrink: 0; border: none; background: transparent; color: #dc2626;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      margin-top: 12px; padding: 4px; line-height: 0;
+      margin-top: 12px; padding: 10px; line-height: 0;
+      min-width: 44px; min-height: 44px; touch-action: manipulation;
     }
     .btn-ex-refresh:hover:not(:disabled) { color: #b91c1c; }
     .btn-ex-refresh:disabled { opacity: 0.45; cursor: wait; }
@@ -586,28 +591,30 @@
       }
       header h1 { font-size: 1.15rem; }
       .mode-tabs {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 6px;
+        overflow: visible;
         margin: 8px 0 4px;
-        padding-bottom: 2px;
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background: var(--bg);
+        padding: 4px 0 6px;
       }
       .mode-tabs::-webkit-scrollbar { display: none; }
       .mode-tabs [data-view="archive"] {
-        margin-left: auto;
-        flex-shrink: 0;
+        margin-left: 0;
       }
       .mode-tabs .btn {
-        flex: 0 0 auto;
+        width: 100%;
         min-height: 44px;
-        padding: 10px 12px;
+        padding: 10px 8px;
         font-size: 0.8rem;
         line-height: 1.15;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
       .btn, .stat-cube, .btn-stat-fold, .btn-stat-leg-fold {
         min-height: 44px;
@@ -1832,17 +1839,19 @@
         expressReplaceConfirm === level
           ? `<div class="ex-replace-confirm">
               <span>Заменить «${escapeHtml(ex.title)}»?</span>
-              <button class="btn" type="button" data-replace-cancel="${level}">Нет</button>
-              <button class="btn on" type="button" data-replace-confirm="${level}">Да, заменить</button>
+              <div class="ex-replace-confirm-actions">
+                <button class="btn" type="button" data-replace-cancel="${level}">Нет</button>
+                <button class="btn on" type="button" data-replace-confirm="${level}">Да, заменить</button>
+              </div>
             </div>`
           : "";
       const refreshBtn = level
         ? `<div class="ex-row-side">
-            <button class="btn-ex-refresh${expressReplacing === level ? " spinning" : ""}" type="button" data-replace-express="${level}" title="Заменить экспресс"${expressReplacing ? " disabled" : ""}>${expressRefreshIcon()}</button>
-            ${confirmBar}
+            <button class="btn-ex-refresh${expressReplacing === level ? " spinning" : ""}" type="button" data-replace-express="${level}" title="Заменить экспресс" aria-label="Заменить экспресс"${expressReplacing ? " disabled" : ""}>${expressRefreshIcon()}</button>
           </div>`
         : "";
-      return `<div class="ex-row">
+      return `<div class="ex-row-block">
+        <div class="ex-row">
         <div class="block ex-panel${isOpen ? " open" : ""}" data-express-level="${level || ""}">
           <button class="ex-blind-toggle" type="button" data-ex-toggle="${level}">
             <div class="ex-blind-head">
@@ -1859,6 +1868,8 @@
           ${takeBtn}
         </div>
         ${refreshBtn}
+      </div>
+      ${confirmBar}
       </div>`;
     }
 
@@ -2735,23 +2746,23 @@
       }
     }
 
-    document.querySelectorAll("[data-view]").forEach((b) => {
-      b.addEventListener("click", async () => {
+    document.getElementById("viewTabs")?.addEventListener("click", async (ev) => {
+      const b = ev.target.closest("[data-view]");
+      if (!b) return;
+      ev.preventDefault();
         const wasStats = viewMode === "stats";
         viewMode = b.dataset.view;
         saveViewMode(viewMode);
+        syncViewButtons();
         openKey = null;
         if (viewMode !== "a") {
           customPickMode = false;
           customPicks = new Set();
           document.body.classList.remove("custom-pick-open");
         }
-        if (viewMode === "stats") {
-          expressHistoryCache = await settleExpressHistory();
-          if (wasStats) {
-            statsSubView = "active";
-            saveStatsSubView(statsSubView);
-          }
+        if (viewMode === "stats" && wasStats) {
+          statsSubView = "active";
+          saveStatsSubView(statsSubView);
         }
         if (viewMode === "express") {
           const cap = board.capperExpresses || {};
@@ -2761,7 +2772,6 @@
         }
         await render();
         if (!board.error && !isBoardWarming(board)) showBanner("");
-      });
     });
 
     syncViewButtons();
